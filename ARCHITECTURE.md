@@ -15,19 +15,19 @@ contract). The three test tiers are the mechanism, not an afterthought.
 
 ## The two hexagons
 
-A backend hexagon and a frontend hexagon, meeting at one typed contract. Imports
+A backend hexagon and a frontend hexagon, meeting at one shared OpenAPI contract. Imports
 point strictly inward (toward the pure, cheap, deterministic core). An inner
 layer never knows an outer layer exists.
 
 ```
    BACKEND  (Python pkg `slr/`)                    FRONTEND  (`web/src/`)
-   L4 app/        FastAPI, wiring, migrations       L4 app/        entry, router, providers
-   L3 usecases/   one intent per file, ports only   L3 ui/         components, hooks (ports only)
+   L4 app/        FastAPI, wiring, migrations       L4 app/        entry, routes, stores
+   L3 usecases/   one intent per file, ports only   L3 ui/         .svelte components, stores (ports only)
    L2 adapters/   real + fake, side by side         L2 adapters/   api.real + api.fake, sse.*
    L1 ports/      interfaces to the costly world    L1 ports/      ApiClient, Stream, Storage, Clock
    L0 domain/     pure rules & math                 L0 view-core/  pure view-models & formatters
                          │                                  │
-                         └──────  contract/ (OpenAPI → generated TS)  ──────┘
+                         └──────  contract/ (OpenAPI → generated JS client)  ──────┘
 ```
 
 ### Backend layers
@@ -44,7 +44,7 @@ layer never knows an outer layer exists.
 
 | Layer | Dir | May import | Tested by |
 |---|---|---|---|
-| L0 | `web/src/view-core/` | stdlib/TS only | **unit** (Vitest) |
+| L0 | `web/src/view-core/` | stdlib/JS only | **unit** (Vitest) |
 | L1 | `web/src/ports/` | `view-core` | interface shapes |
 | L2 | `web/src/adapters/` | `view-core`, `ports`, browser APIs | **integration** — component tests vs fake; contract test real client vs OpenAPI |
 | L3 | `web/src/ui/` | `view-core`, `ports` (**never `fetch`/`EventSource`**) | **integration** — components on the fake `ApiClient` |
@@ -124,7 +124,7 @@ a registry"); we have two.
   Missing test scaffolding fails the build like missing code.
 
 **Frontend** mirrors this with `dependency-cruiser`: `ui → adapters` and
-`view-core → (react|fetch|EventSource)` are errors; a source rule bans `fetch`/
+`view-core → (svelte|fetch|EventSource)` are errors; a source rule bans `fetch`/
 `EventSource`/`localStorage` outside `adapters/`.
 
 **`make guard`** proves the gate is alive: it plants `import sqlalchemy` in
@@ -144,7 +144,7 @@ a registry"); we have two.
   Makefile                   check · lint · arch · test:{unit,int,e2e} · guard · demo-*
   .importlinter · .env.example
 
-  contract/                  OpenAPI (emitted from FastAPI) → generated/*.ts
+  contract/                  OpenAPI (emitted from FastAPI) → generated JS client (validated at runtime in tests)
 
   backend/  (pkg `slr/`)
     domain/     stations.py (Station, Leg, overlap/adjacency, distance)
@@ -170,13 +170,13 @@ a registry"); we have two.
                 migrations/ (Alembic; btree_gist + EXCLUDE)
 
   frontend/ (`web/src/`)
-    view-core/  legs.ts · availability.ts · seatmap.ts · fares.ts · booking.ts
-    ports/      api-client.ts · availability-stream.ts · storage.ts · clock.ts
-    adapters/   api-client.real.ts / api-client.fake.ts
-                availability-stream.real.ts / .fake.ts · storage.real.ts / .fake.ts
-    ui/         RoutePicker · DatePicker · SeatMap · SeatCell · HoldTimer
-                ConfirmForm · WaitlistButton · hooks (useAvailability, useHold)
-    app/        main.tsx · router.tsx · providers · env
+    view-core/  legs.js · availability.js · seatmap.js · fares.js · booking.js
+    ports/      api-client.js · availability-stream.js · storage.js · clock.js
+    adapters/   api-client.real.js / api-client.fake.js
+                availability-stream.real.js / .fake.js · storage.real.js / .fake.js
+    ui/         RoutePicker · DatePicker · SeatMap · SeatCell · HoldTimer   (.svelte)
+                ConfirmForm · WaitlistButton · stores (availability, hold)
+    app/        main.js · App.svelte · routes · stores · env
 
   tests/  (backend)
     unit/         mirrors domain/
@@ -202,7 +202,7 @@ a registry"); we have two.
 | Add an external dep (SMS, real payments) | new port + real & fake adapters + conformance | use-cases call the port |
 | Add an API endpoint | `app/schemas.py` (contract) → a `usecases/` intent → a route | domain untouched unless the rule is new |
 | Upgrade abuse detection to ML | new `AbuseScorer` adapter passing conformance | nothing in domain/usecases |
-| Change the seat map's look | `view-core/seatmap.ts` model + `ui/SeatMap` | no `fetch` in components |
+| Change the seat map's look | `view-core/seatmap.js` model + `ui/SeatMap` | no `fetch` in components |
 
 If a task makes you edit an inner layer to change something outer — or spread one
 change across three layers — **stop. You are fighting the architecture.** That

@@ -60,7 +60,7 @@ because test-drivenness and enforcement are infrastructure, not habits.**
 
 **Deliverables**
 - Repo tree per [ARCHITECTURE.md](ARCHITECTURE.md); empty `__init__.py` per layer.
-- `pyproject.toml` (ruff, mypy, pytest markers: `unit`/`integration`/`concurrency`/`contract`/`arch`), `web/` Vite+TS+Vitest+dependency-cruiser.
+- `pyproject.toml` (ruff, mypy, pytest markers: `unit`/`integration`/`concurrency`/`contract`/`arch`), `web/` Vite+**Svelte**+JS+Vitest+ESLint+dependency-cruiser.
 - `.importlinter` with the four contracts; `tests/architecture/` source-scan + test-doctrine checks (they pass trivially on an empty tree and tighten as code lands).
 - `docker-compose.yml`: `db` (Postgres, healthcheck), `migrate`, `seed`, `api`, `web`; profiles `test` and `e2e`. `.env.example` with working local defaults.
 - `Makefile`: `check`, `lint`, `arch`, `test:unit|int|e2e`, `guard`, `demo-concurrency`, `demo-resale`.
@@ -163,12 +163,13 @@ client → UI → shell.
 
 **Deliverables**
 - `view-core/` (unit): `legs`, `availability` (which seats are free for a leg), `seatmap` (layout model), `fares` (format), `booking` (hold-flow reducer). Vitest.
-- `ports/` + `adapters/`: `api-client.fake` first (drives component tests), then `api-client.real` generated from `contract/`; `availability-stream.real` (`EventSource`) + fake; `storage.*`.
+- `ports/` + `adapters/`: `api-client.fake` first (drives component tests), then `api-client.real` (JS client generated from `contract/`, responses validated against the OpenAPI schema at runtime); `availability-stream.real` (`EventSource`) + fake; `storage.*`.
 - `ui/` (integration on the fake client): `RoutePicker`, `DatePicker`, **`SeatMap`** (per-leg availability colouring, click-to-hold), `HoldTimer`, `ConfirmForm`, `WaitlistButton`; optimistic UI with graceful **409** handling; live grey-out via SSE.
 - `app/` shell, router, providers, env, real-adapter injection.
 
 **Exit gate** — view-core modules unit-tested; components tested on the fake
-`ApiClient`; contract test confirms the real client matches OpenAPI;
+`ApiClient`; contract test validates the real client's responses against the
+OpenAPI schema at runtime (no FE compiler — this is what holds the seam);
 dependency-cruiser passes (no `fetch` outside `adapters/`).
 
 ---
