@@ -1,0 +1,56 @@
+# The Dependency Rule, machine-enforced (ARCHITECTURE.md §Enforcement, PLAN D14).
+# Imports may only point inward, toward the pure, cheap core. Run: `lint-imports`
+# (with backend/ on the path). `make guard` proves this gate is alive.
+[importlinter]
+root_package = slr
+include_external_packages = True
+
+[importlinter:contract:layers]
+name = Layered architecture — imports point inward only
+type = layers
+layers =
+    slr.app
+    slr.adapters
+    slr.usecases
+    slr.ports
+    slr.domain
+
+# The pure core (L0/L1) must never see a framework. Detects the import even when the
+# framework is not installed — which is exactly what `make guard` relies on.
+[importlinter:contract:domain-and-ports-are-pure]
+name = Domain and ports import no frameworks
+type = forbidden
+source_modules =
+    slr.domain
+    slr.ports
+forbidden_modules =
+    sqlalchemy
+    fastapi
+    alembic
+    httpx
+    pydantic
+    starlette
+
+# Use-cases orchestrate through ports only; costly deps arrive via a port, never direct.
+[importlinter:contract:usecases-stay-framework-free]
+name = Use-cases import no frameworks
+type = forbidden
+source_modules =
+    slr.usecases
+forbidden_modules =
+    sqlalchemy
+    fastapi
+    alembic
+    httpx
+    pydantic
+    starlette
+
+# Adapters implement ports; they do not drive intents (would invert the dependency).
+# The layers contract permits adapters→usecases (higher→lower); this forbids it.
+[importlinter:contract:adapters-dont-orchestrate]
+name = Adapters do not import use-cases
+type = forbidden
+source_modules =
+    slr.adapters
+forbidden_modules =
+    slr.usecases

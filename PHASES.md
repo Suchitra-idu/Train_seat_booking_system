@@ -64,7 +64,7 @@ because test-drivenness and enforcement are infrastructure, not habits.**
 - `.importlinter` with the four contracts; `tests/architecture/` source-scan + test-doctrine checks (they pass trivially on an empty tree and tighten as code lands).
 - `docker-compose.yml`: `db` (Postgres, healthcheck), `migrate`, `seed`, `api`, `web`; profiles `test` and `e2e`. `.env.example` with working local defaults.
 - `Makefile`: `check`, `lint`, `arch`, `test:unit|int|e2e`, `guard`, `demo-concurrency`, `demo-resale`.
-- GitHub Actions running `make check` + E2E on push.
+- GitHub Actions: one lean job running `make guard` + `make check` on push/PR. E2E is deferred to P7 (kept as a commented, non-blocking stub — it's the flaky part).
 
 **Exit gate** — `make guard` plants `slr/domain/_guard.py: import sqlalchemy`,
 import-linter **rejects it**, cleanup runs. `make check` is green on the empty

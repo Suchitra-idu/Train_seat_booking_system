@@ -102,7 +102,7 @@ a registry"); we have two.
 ## Enforcement — boundaries you cannot run get crossed
 
 `make check` is the gate: `typecheck + ruff + import-linter + unit + integration`
-(system runs in CI + on demand against compose). Nothing merges red.
+(system runs on demand against compose via `make test-e2e`). Nothing merges red.
 
 **`.importlinter`** — four contracts:
 

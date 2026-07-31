@@ -1,0 +1,63 @@
+# The gate, on a clean machine (FULLSTACK_ARCHITECTURE.md §5): nothing merges red.
+# Deliberately lean — one fast, deterministic job. The E2E job (docker compose +
+# Testcontainers) is intentionally left out until P7 has journeys; it's the flaky part
+# and stays a separate, non-blocking job when it lands (see the stub at the bottom).
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend deps
+        run: uv sync
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install frontend deps
+        run: npm --prefix web ci || npm --prefix web install
+
+      # Prove the enforcement gate is alive before trusting a green check.
+      - name: Guard (planted banned import must be rejected)
+        run: make guard
+
+      - name: Check (lint + arch + typecheck + unit + integration)
+        run: make check
+
+# ─── Deferred to P7 (kept here so the wiring is obvious when it lands) ──────
+#  e2e:
+#    runs-on: ubuntu-latest
+#    needs: check          # never let a flaky browser test block the core gate
+#    steps:
+#      - uses: actions/checkout@v4
+#      - name: Bring up the stack
+#        run: |
+#          cp .env.example .env
+#          docker compose up -d --wait
+#      - name: E2E journeys
+#        run: docker compose --profile e2e run --rm e2e
+#      - name: Stack logs on failure
+#        if: failure()
+#        run: docker compose logs
+#      - name: Tear down
+#        if: always()
+#        run: docker compose down -v

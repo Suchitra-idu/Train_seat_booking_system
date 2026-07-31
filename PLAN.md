@@ -166,7 +166,7 @@ is executable documentation of the contract). Use-cases depend on ports only.
 
 | Phase | Deliverable | Test tier / gate |
 |---|---|---|
-| **P0 Rails** | repo layout, docker-compose (pg+api+web+migrate), Makefile (`check/lint/arch/test:unit/int/e2e/guard`), import-linter config, GitHub Actions, `.env.example`, OpenAPI→JS client gen. `guard` proves enforcement is live. | arch + `guard` green |
+| **P0 Rails** | repo layout, docker-compose (pg+api+web+migrate), Makefile (`check/lint/arch/test:unit/int/e2e/guard`), import-linter config, lean GitHub Actions (`guard`+`check`), `.env.example`, OpenAPI→JS client gen. `guard` proves enforcement is live. | arch + `guard` green |
 | **P1 Domain (L0)** | interval/overlap math (Hypothesis), fare functions (oracle tests), packing optimizer (optimality + property tests), booking state machine, anti-tout predicates, abuse heuristic. Zero I/O. | **UNIT** — every module property/example-tested |
 | **P2 Ports + fakes (L1/L2)** | all ports defined; in-memory fakes; one conformance suite per port (vs fake now). | **INTEGRATION** (fakes) |
 | **P3 Real adapters (L2)** | SQLAlchemy models + Alembic (`btree_gist`, `EXCLUDE`); real repo passes the same conformance suite; **concurrency-proof test** (N concurrent holds on one leg → exactly one wins); real pay/notify/abuse. | **INTEGRATION** (Testcontainers Postgres) |
@@ -210,9 +210,11 @@ docker compose up             # -> Postgres + migrations + seed + API + web, all
   simultaneous booking requests at a single seat/leg and prints "1 booked, N−1
   got 409" — the reviewer *sees* the exclusion constraint hold the line.
 - **Gate:** `make check = typecheck (mypy) + lint (ruff + ESLint) + import-linter
-  + dependency-cruiser + unit + integration`; CI runs it plus E2E on every push.
-  Nothing merges red. (No FE compiler now — the contract seam is held by *runtime*
-  schema-validation contract tests, D13.)
+  + dependency-cruiser + unit + integration`; a lean GitHub Actions job runs
+  `make guard` + `make check` on push/PR, and E2E runs on demand against compose
+  (`make test-e2e`, wired into CI as a separate non-blocking job in P7). Nothing merges
+  red. (No FE compiler now — the contract seam is held by *runtime* schema-validation
+  contract tests, D13.)
 - **`make guard`** plants `domain → sqlalchemy` and expects import-linter to
   reject it — proof the gate is alive.
 - **No secrets committed:** every credential is an env var; `.env` is gitignored,

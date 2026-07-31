@@ -1,0 +1,56 @@
+[project]
+name = "slr-booking"
+version = "0.0.0"
+description = "Segment-based train seat booking system (Colombo Fort–Badulla)"
+requires-python = ">=3.12"
+# Runtime deps land in later phases (SQLAlchemy in P3, FastAPI in P5). P0 is rails only.
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest>=8.2",
+    "pytest-cov>=5.0",
+    "hypothesis>=6.100",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "import-linter>=2.0",
+]
+
+# uv manages a venv but does not try to build/install `slr` — the package is put on
+# sys.path via `pythonpath`/PYTHONPATH so the inner layers stay a plain source tree.
+[tool.uv]
+package = false
+
+# ─── Ruff ────────────────────────────────────────────────────────────────
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["backend", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+# ─── mypy ────────────────────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "backend"
+packages = ["slr"]
+strict = true
+warn_unused_configs = true
+# The inner layers are pure; frameworks arrive only in adapters/app (added per phase).
+[[tool.mypy.overrides]]
+module = ["slr.adapters.*", "slr.app.*"]
+disallow_untyped_defs = false
+
+# ─── pytest ──────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+pythonpath = ["backend", "."]
+testpaths = ["tests"]
+addopts = "--import-mode=importlib"
+markers = [
+    "unit: pure, in-memory, milliseconds — L0 domain / view-core (no I/O)",
+    "integration: real infra where it counts — ports, use-cases, contract",
+    "concurrency: N-concurrent proof against the real repo (needs Postgres)",
+    "contract: OpenAPI schema conformance on both sides of the seam",
+    "arch: enforcement — dependency rule, source scan, test doctrine",
+]
