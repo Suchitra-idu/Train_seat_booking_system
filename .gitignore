@@ -1,0 +1,79 @@
+# ─── Secrets & environment ───────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.local
+secrets/
+*.pem
+*.key
+
+# ─── Claude / AI assistant files ─────────────────────────────────────────
+CLAUDE.md
+.claude/
+.claude/settings.local.json
+.cursor/
+.aider*
+.anthropic/
+
+# ─── Node / TypeScript / frontend ────────────────────────────────────────
+node_modules/
+dist/
+build/
+.next/
+out/
+.turbo/
+.vite/
+coverage/
+*.tsbuildinfo
+.eslintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnp.*
+.yarn/
+
+# ─── Python / backend ────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.tox/
+htmlcov/
+.coverage
+.coverage.*
+
+# ─── Databases & data ────────────────────────────────────────────────────
+*.sqlite
+*.sqlite3
+*.db
+pgdata/
+data/
+
+# ─── Docker ──────────────────────────────────────────────────────────────
+docker-compose.override.yml
+
+# ─── Logs & temp ─────────────────────────────────────────────────────────
+*.log
+logs/
+tmp/
+.tmp/
+
+# ─── Editors & OS ────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ─── Test / build artifacts ──────────────────────────────────────────────
+playwright-report/
+test-results/
+.nyc_output/
