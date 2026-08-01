@@ -47,10 +47,16 @@ export class RealApiClient {
     }
   }
 
-  listTrips({ routeCode, serviceDate }) {
-    return this._request("GET", "/trips", {
-      query: { route_code: routeCode, service_date: serviceDate },
-      expect: "listTrips",
+  searchTrains({ originCode, destCode, serviceDate }) {
+    return this._request("GET", "/search", {
+      query: { origin: originCode, dest: destCode, date: serviceDate },
+      expect: "searchTrains",
+    });
+  }
+
+  getTrip(tripId) {
+    return this._request("GET", `/trips/${encodeURIComponent(tripId)}`, {
+      expect: "getTrip",
     });
   }
 
@@ -61,12 +67,6 @@ export class RealApiClient {
     });
   }
 
-  impact(tripId) {
-    return this._request("GET", `/trips/${encodeURIComponent(tripId)}/impact`, {
-      expect: "impact",
-    });
-  }
-
   quote({ tripId, originSeq, destSeq, travelClass }) {
     return this._request("POST", "/quote", {
       body: { trip_id: tripId, origin_seq: originSeq, dest_seq: destSeq, travel_class: travelClass },
@@ -74,7 +74,7 @@ export class RealApiClient {
     });
   }
 
-  hold({ tripId, seatId, originSeq, destSeq, passengerId, travelClass, reference }, opts = {}) {
+  hold({ tripId, seatId, originSeq, destSeq, passengerId, passengerName, reference }, opts = {}) {
     return this._request("POST", "/bookings/hold", {
       headers: this._idem(opts),
       body: {
@@ -83,24 +83,10 @@ export class RealApiClient {
         origin_seq: originSeq,
         dest_seq: destSeq,
         passenger_id: passengerId,
-        travel_class: travelClass,
+        passenger_name: passengerName,
         reference: reference ?? null,
       },
       expect: "hold",
-    });
-  }
-
-  unreserved({ tripId, originSeq, destSeq, passengerId, travelClass }, opts = {}) {
-    return this._request("POST", "/unreserved", {
-      headers: this._idem(opts),
-      body: {
-        trip_id: tripId,
-        origin_seq: originSeq,
-        dest_seq: destSeq,
-        passenger_id: passengerId,
-        travel_class: travelClass,
-      },
-      expect: "unreserved",
     });
   }
 
@@ -113,25 +99,6 @@ export class RealApiClient {
   cancel(bookingId) {
     return this._request("POST", `/bookings/${encodeURIComponent(bookingId)}/cancel`, {
       expect: "cancel",
-    });
-  }
-
-  lookup(reference) {
-    return this._request("GET", `/bookings/${encodeURIComponent(reference)}`, {
-      expect: "lookup",
-    });
-  }
-
-  joinWaitlist({ tripId, originSeq, destSeq, passengerId, travelClass }) {
-    return this._request("POST", "/waitlist", {
-      body: {
-        trip_id: tripId,
-        origin_seq: originSeq,
-        dest_seq: destSeq,
-        passenger_id: passengerId,
-        travel_class: travelClass,
-      },
-      expect: "joinWaitlist",
     });
   }
 

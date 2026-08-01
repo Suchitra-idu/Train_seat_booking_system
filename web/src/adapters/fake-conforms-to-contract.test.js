@@ -12,45 +12,39 @@ describe("FakeApiClient conforms to the OpenAPI contract", () => {
 
   it("every response validates against its bound schema", async () => {
     const api = new FakeApiClient();
-    const q = { routeCode: DEMO_TRIP.route_code, serviceDate: DEMO_TRIP.service_date };
 
-    validateResponse(RESPONSE_SCHEMA.listTrips, await api.listTrips(q));
-    validateResponse(RESPONSE_SCHEMA.availability, await api.availability("trip-1", leg));
+    const options = await api.searchTrains({
+      originCode: "FORT",
+      destCode: "KDY",
+      serviceDate: DEMO_TRIP.service_date,
+    });
+    validateResponse(RESPONSE_SCHEMA.searchTrains, options);
+
+    validateResponse(RESPONSE_SCHEMA.getTrip, await api.getTrip(DEMO_TRIP.trip_id));
+    validateResponse(RESPONSE_SCHEMA.availability, await api.availability(DEMO_TRIP.trip_id, leg));
     validateResponse(
       RESPONSE_SCHEMA.quote,
-      await api.quote({ tripId: "trip-1", ...leg, travelClass: "SECOND" }),
+      await api.quote({ tripId: DEMO_TRIP.trip_id, ...leg, travelClass: "SECOND" }),
     );
 
     const held = await api.hold({
-      tripId: "trip-1",
-      seatId: "R1",
+      tripId: DEMO_TRIP.trip_id,
+      seatId: "A1A",
       ...leg,
-      passengerId: "alice",
-      travelClass: "SECOND",
+      passengerId: "nic-1",
+      passengerName: "Ann Perera",
     });
     validateResponse(RESPONSE_SCHEMA.hold, held);
     validateResponse(RESPONSE_SCHEMA.confirm, await api.confirm(held.booking_id));
-    validateResponse(RESPONSE_SCHEMA.lookup, await api.lookup(held.reference));
-    validateResponse(RESPONSE_SCHEMA.impact, await api.impact("trip-1"));
 
-    const pending = await api.unreserved({
-      tripId: "trip-1",
+    const another = await api.hold({
+      tripId: DEMO_TRIP.trip_id,
+      seatId: "A1B",
       ...leg,
-      passengerId: "nic-77",
-      travelClass: "SECOND",
+      passengerId: "nic-2",
+      passengerName: "Bee Silva",
     });
-    validateResponse(RESPONSE_SCHEMA.unreserved, pending);
-
-    const wl = await api.joinWaitlist({
-      tripId: "trip-1",
-      ...leg,
-      passengerId: "bob",
-      travelClass: "SECOND",
-    });
-    validateResponse(RESPONSE_SCHEMA.joinWaitlist, wl);
-
-    const cancel = await api.cancel(held.booking_id);
-    validateResponse(RESPONSE_SCHEMA.cancel, cancel);
+    validateResponse(RESPONSE_SCHEMA.cancel, await api.cancel(another.booking_id));
   });
 
   it("rejects a response that violates the contract", () => {

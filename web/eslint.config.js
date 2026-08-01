@@ -6,7 +6,15 @@ import globals from "globals";
 // costly globals may appear only in adapters/. Everywhere else they must arrive through a
 // port. dependency-cruiser guards the *import* graph; this guards the *global* calls it
 // can't see. Layer-import rules live in .dependency-cruiser.cjs.
-const COSTLY_GLOBALS = ["fetch", "EventSource", "WebSocket", "localStorage", "sessionStorage"];
+const COSTLY_GLOBALS = [
+  "fetch",
+  "EventSource",
+  "WebSocket",
+  "localStorage",
+  "sessionStorage",
+  "window",
+  "document",
+];
 
 export default [
   js.configs.recommended,
@@ -25,11 +33,16 @@ export default [
     },
     rules: {
       "no-restricted-globals": ["error", ...COSTLY_GLOBALS],
+      // A leading underscore marks a deliberately-unused binding (an {#each} item you
+      // only need for its index), not a stray one.
+      "no-unused-vars": ["error", { varsIgnorePattern: "^_", argsIgnorePattern: "^_" }],
     },
   },
   {
-    // Only adapters/ may touch the network/storage globals directly.
-    files: ["src/adapters/**/*.{js,svelte}"],
+    // Only adapters/ may touch the network/storage/DOM globals directly; app/ gets the
+    // same exemption for the one thing a composition root legitimately does with them,
+    // mounting the app and injecting real adapters (main.js, App.svelte).
+    files: ["src/adapters/**/*.{js,svelte}", "src/app/**/*.{js,svelte}"],
     rules: { "no-restricted-globals": "off" },
   },
   {

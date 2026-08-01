@@ -18,7 +18,7 @@ export function freeCount(availability) {
   return freeSeatIds(availability).size;
 }
 
-/** True when the leg is sold out for reservable seats - the cue to offer the waitlist. */
+/** True when the leg is sold out for reservable seats. */
 export function isSoldOut(availability) {
   return !!availability && freeCount(availability) === 0;
 }

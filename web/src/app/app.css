@@ -16,4 +16,34 @@
     outline: 2px solid var(--color-primary-500);
     outline-offset: 2px;
   }
+
+  /* D27: this app renders in light mode only. Rose Pine's Dawn palette is tuned against
+     one background; pinning color-scheme makes every light-dark() token in the theme
+     resolve to its light value regardless of the visitor's OS setting. */
+  :root {
+    color-scheme: light;
+  }
+}
+
+/* Redefine Tailwind's `dark` variant to a selector this app never emits, so Skeleton's
+   internal @variant dark and any stray dark: utility both go dead rather than flip the
+   palette (D27). */
+@custom-variant dark (&:where([data-force-dark-that-never-matches]));
+
+/* Print: the ticket cards only (D24/D26), no header/footer/buttons. A group booking can
+   print several cards at once (one per seat), which is the point, printing "my ticket"
+   from a group prints everyone travelling together. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .receipt-card,
+  .receipt-card * {
+    visibility: visible;
+  }
+  .receipt-card {
+    break-inside: avoid;
+    margin: 0 0 1rem;
+    max-width: 100%;
+  }
 }

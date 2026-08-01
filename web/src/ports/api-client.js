@@ -8,31 +8,25 @@
 
 export * from "./errors.js";
 
-/** method name → { schema: OpenAPI component, array?: boolean, nullable?: boolean } */
+/** method name → { schema: OpenAPI component, array?: boolean } */
 export const RESPONSE_SCHEMA = Object.freeze({
-  listTrips: { schema: "TripOut", array: true },
+  searchTrains: { schema: "TrainOptionOut", array: true },
+  getTrip: { schema: "TripOut" },
   availability: { schema: "LegAvailabilityOut" },
   quote: { schema: "QuoteOut" },
   hold: { schema: "BookingOut" },
-  unreserved: { schema: "BookingOut" },
-  confirm: { schema: "BookingOut" },
-  cancel: { schema: "CancelOut" },
-  lookup: { schema: "BookingOut" },
-  joinWaitlist: { schema: "WaitlistOut" },
-  impact: { schema: "ImpactOut" },
+  confirm: { schema: "ReceiptOut" },
+  cancel: { schema: "BookingOut" },
 });
 
 /**
  * @typedef {object} ApiClient
- * @property {(q: {routeCode: string, serviceDate: string}) => Promise<object[]>} listTrips
+ * @property {(q: {originCode: string, destCode: string, serviceDate: string}) => Promise<object[]>} searchTrains
+ * @property {(tripId: string) => Promise<object>} getTrip
  * @property {(tripId: string, leg: {originSeq: number, destSeq: number}) => Promise<object>} availability
  * @property {(req: object) => Promise<object>} quote
  * @property {(req: object, opts?: {idempotencyKey?: string}) => Promise<object>} hold
- * @property {(req: object, opts?: {idempotencyKey?: string}) => Promise<object>} unreserved
  * @property {(bookingId: string) => Promise<object>} confirm
  * @property {(bookingId: string) => Promise<object>} cancel
- * @property {(reference: string) => Promise<object>} lookup
- * @property {(req: object) => Promise<object>} joinWaitlist
- * @property {(tripId: string) => Promise<object>} impact
  */
 export const ApiClient = {};

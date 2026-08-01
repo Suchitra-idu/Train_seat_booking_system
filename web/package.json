@@ -15,7 +15,9 @@
     "check": "npm run lint && npm run arch && npm run test"
   },
   "dependencies": {
-    "ajv": "^8.17.1"
+    "ajv": "^8.17.1",
+    "lucide-svelte": "^1.0.1",
+    "qrcode-generator": "^2.0.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",

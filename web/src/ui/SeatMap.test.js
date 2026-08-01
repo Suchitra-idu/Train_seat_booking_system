@@ -5,34 +5,39 @@ import SeatMap from "./SeatMap.svelte";
 import { buildSeatMap } from "../view-core/seatmap.js";
 
 const TRIP = {
+  coaches: [
+    { code: "A", coach_type: "RESERVED", travel_class: "SECOND", rows: 1, columns: "1-1", exit_rows: [] },
+    { code: "B", coach_type: "UNRESERVED", travel_class: "SECOND", rows: 1, columns: "1-0", exit_rows: [] },
+  ],
   seats: [
-    { seat_id: "R1", coach: "B", coach_type: "RESERVED", travel_class: "SECOND", number: 1 },
-    { seat_id: "R2", coach: "B", coach_type: "RESERVED", travel_class: "SECOND", number: 2 },
-    { seat_id: "U1", coach: "C", coach_type: "UNRESERVED", travel_class: "SECOND", number: 1 },
+    { seat_id: "A1A", coach: "A", coach_type: "RESERVED", travel_class: "SECOND", number: 1, row: 1, column: "A" },
+    { seat_id: "A1B", coach: "A", coach_type: "RESERVED", travel_class: "SECOND", number: 2, row: 1, column: "B" },
+    { seat_id: "B1A", coach: "B", coach_type: "UNRESERVED", travel_class: "SECOND", number: 1, row: 1, column: "A" },
   ],
 };
 const AVAIL = {
   seats: [
-    { seat_id: "R1", available: true },
-    { seat_id: "R2", available: false },
-    { seat_id: "U1", available: true },
+    { seat_id: "A1A", coach: "A", travel_class: "SECOND", available: true },
+    { seat_id: "A1B", coach: "A", travel_class: "SECOND", available: false },
   ],
 };
 
-describe("SeatMap", () => {
-  it("selects a free seat and calls onselect", async () => {
-    const onselect = vi.fn();
+describe("SeatMap main path", () => {
+  it("toggles a free seat and calls ontoggle", async () => {
+    const ontoggle = vi.fn();
     const map = buildSeatMap({ trip: TRIP, availability: AVAIL });
-    render(SeatMap, { props: { map, onselect } });
+    render(SeatMap, { props: { map, ontoggle } });
 
-    await userEvent.click(screen.getByRole("button", { name: /Seat R1/ }));
-    expect(onselect).toHaveBeenCalledWith("R1");
+    await userEvent.click(screen.getByRole("button", { name: /Seat 1A/ }));
+    expect(ontoggle).toHaveBeenCalledWith("A1A");
   });
 
-  it("disables booked and unreserved seats", () => {
+  it("disables a booked seat and switches coaches", async () => {
     const map = buildSeatMap({ trip: TRIP, availability: AVAIL });
-    render(SeatMap, { props: { map, onselect: () => {} } });
-    expect(screen.getByRole("button", { name: /Seat R2/ })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /Seat U1/ })).toBeDisabled();
+    render(SeatMap, { props: { map, ontoggle: () => {} } });
+    expect(screen.getByRole("button", { name: /Seat 1B/ })).toBeDisabled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Coach B" }));
+    expect(screen.getByRole("button", { name: /Seat 1A.*unreserved/ })).toBeDisabled();
   });
 });

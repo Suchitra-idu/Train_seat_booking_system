@@ -2,69 +2,56 @@ import { describe, it, expect } from "vitest";
 import { buildSeatMap, SEAT_STATUS, statusLabel, classLabel } from "./seatmap.js";
 
 const TRIP = {
-  trip_id: "trip-1",
+  coaches: [
+    { code: "A", coach_type: "RESERVED", travel_class: "SECOND", rows: 2, columns: "1-1", exit_rows: [1] },
+    { code: "B", coach_type: "UNRESERVED", travel_class: "SECOND", rows: 1, columns: "1-0", exit_rows: [] },
+  ],
   seats: [
-    { seat_id: "R2", coach: "B", coach_type: "RESERVED", travel_class: "SECOND", number: 2 },
-    { seat_id: "R1", coach: "B", coach_type: "RESERVED", travel_class: "SECOND", number: 1 },
-    { seat_id: "F1", coach: "A", coach_type: "RESERVED", travel_class: "FIRST", number: 1 },
-    { seat_id: "U1", coach: "C", coach_type: "UNRESERVED", travel_class: "SECOND", number: 1 },
+    { seat_id: "A1A", coach: "A", coach_type: "RESERVED", travel_class: "SECOND", number: 1, row: 1, column: "A" },
+    { seat_id: "A1B", coach: "A", coach_type: "RESERVED", travel_class: "SECOND", number: 2, row: 1, column: "B" },
+    { seat_id: "A2A", coach: "A", coach_type: "RESERVED", travel_class: "SECOND", number: 3, row: 2, column: "A" },
+    { seat_id: "A2B", coach: "A", coach_type: "RESERVED", travel_class: "SECOND", number: 4, row: 2, column: "B" },
+    { seat_id: "B1A", coach: "B", coach_type: "UNRESERVED", travel_class: "SECOND", number: 1, row: 1, column: "A" },
   ],
 };
 
-const AVAIL = {
+const AVAILABILITY = {
   seats: [
-    { seat_id: "R1", available: true },
-    { seat_id: "R2", available: false },
-    { seat_id: "F1", available: true },
-    { seat_id: "U1", available: true },
+    { seat_id: "A1A", coach: "A", travel_class: "SECOND", available: true },
+    { seat_id: "A1B", coach: "A", travel_class: "SECOND", available: false },
+    { seat_id: "A2A", coach: "A", travel_class: "SECOND", available: true },
+    { seat_id: "A2B", coach: "A", travel_class: "SECOND", available: true },
   ],
 };
 
-describe("buildSeatMap", () => {
-  it("groups by coach (sorted) and orders seats by number", () => {
-    const map = buildSeatMap({ trip: TRIP, availability: AVAIL });
-    expect(map.coaches.map((c) => c.code)).toEqual(["A", "B", "C"]);
+describe("buildSeatMap main path", () => {
+  it("lays seats into left/right blocks per row with exit-row breaks", () => {
+    const map = buildSeatMap({ trip: TRIP, availability: AVAILABILITY, selectedSeatIds: ["A2A", "A2B"] });
+    const coachA = map.coaches.find((c) => c.code === "A");
+
+    expect(coachA.rows).toHaveLength(2);
+    expect(coachA.rows[0].left[0].id).toBe("A1A");
+    expect(coachA.rows[0].right[0].id).toBe("A1B");
+    expect(coachA.rows[0].exitAfter).toBe(true);
+
+    expect(coachA.rows[0].left[0].status).toBe(SEAT_STATUS.FREE);
+    expect(coachA.rows[0].right[0].status).toBe(SEAT_STATUS.TAKEN);
+    // a group booking can hold more than one seat at once
+    expect(coachA.rows[1].left[0].status).toBe(SEAT_STATUS.SELECTED);
+    expect(coachA.rows[1].right[0].status).toBe(SEAT_STATUS.SELECTED);
+
     const coachB = map.coaches.find((c) => c.code === "B");
-    expect(coachB.seats.map((s) => s.id)).toEqual(["R1", "R2"]);
-  });
+    expect(coachB.rows[0].left[0].status).toBe(SEAT_STATUS.UNRESERVED);
+    expect(coachB.rows[0].left[0].selectable).toBe(false);
 
-  it("tags reserved seats free/taken and marks the selection", () => {
-    const map = buildSeatMap({ trip: TRIP, availability: AVAIL, selectedSeatId: "F1" });
-    const byId = Object.fromEntries(map.coaches.flatMap((c) => c.seats).map((s) => [s.id, s]));
-    expect(byId.R1.status).toBe(SEAT_STATUS.FREE);
-    expect(byId.R1.selectable).toBe(true);
-    expect(byId.R2.status).toBe(SEAT_STATUS.TAKEN);
-    expect(byId.R2.selectable).toBe(false);
-    expect(byId.F1.status).toBe(SEAT_STATUS.SELECTED);
-  });
-
-  it("never makes unreserved seats selectable", () => {
-    const map = buildSeatMap({ trip: TRIP, availability: AVAIL });
-    const u1 = map.coaches.flatMap((c) => c.seats).find((s) => s.id === "U1");
-    expect(u1.status).toBe(SEAT_STATUS.UNRESERVED);
-    expect(u1.selectable).toBe(false);
-  });
-
-  it("counts reserved-only free seats, excluding unreserved virtuals", () => {
-    const map = buildSeatMap({ trip: TRIP, availability: AVAIL });
-    expect(map.reservedTotal).toBe(3);
-    expect(map.reservedFreeCount).toBe(2); // R1 + F1, not U1
-    expect(map.hasUnreserved).toBe(true);
+    expect(map.reservedTotal).toBe(4);
+    expect(map.reservedFreeCount).toBe(3);
   });
 
   it("marks everything unknown before availability loads", () => {
     const map = buildSeatMap({ trip: TRIP, availability: null });
-    const statuses = new Set(
-      map.coaches.flatMap((c) => c.seats).filter((s) => s.coachType === "RESERVED").map((s) => s.status),
-    );
-    expect(statuses).toEqual(new Set([SEAT_STATUS.UNKNOWN]));
+    expect(map.coaches[0].rows[0].left[0].status).toBe(SEAT_STATUS.UNKNOWN);
     expect(map.reservedFreeCount).toBe(0);
-  });
-
-  it("builds an accessible per-seat label", () => {
-    const map = buildSeatMap({ trip: TRIP, availability: AVAIL });
-    const r1 = map.coaches.flatMap((c) => c.seats).find((s) => s.id === "R1");
-    expect(r1.label).toBe("Seat R1, 2nd class, available");
   });
 });
 
