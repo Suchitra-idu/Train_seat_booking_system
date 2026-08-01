@@ -1,7 +1,7 @@
 """Interval math is the load-bearing correctness core (D2): occupancy is a set of
 half-open station intervals [origin, dest), and 'two legs share a seat' is exactly
 'their intervals do not overlap'. These properties are what the DB EXCLUDE constraint
-enforces later — proven here, cheaply, first.
+enforces later, proven here, cheaply, first.
 """
 
 import pytest
@@ -74,7 +74,7 @@ def test_adjacent_legs_never_overlap(a, b):
 
 @pytest.mark.unit
 def test_adjacency_is_the_resale_signature():
-    # [A,B) then [B,C) on the SAME seat — the journey the whole system exists for.
+    # [A,B) then [B,C) on the SAME seat, the journey the whole system exists for.
     fort_kandy = Leg(0, 5)
     kandy_badulla = Leg(5, 12)
     assert fort_kandy.is_adjacent(kandy_badulla)

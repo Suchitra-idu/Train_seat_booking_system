@@ -17,3 +17,7 @@ class IllegalTransition(DomainError):
 
 class NoFeasibleSeat(DomainError):
     """No seat can hold this leg without overlapping an existing occupancy."""
+
+
+class OverlapError(DomainError):
+    """A seat/leg is already held by an active booking (D2). Maps to 409."""

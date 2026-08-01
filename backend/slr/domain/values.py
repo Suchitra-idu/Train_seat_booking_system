@@ -1,6 +1,6 @@
 """Cross-cutting value objects shared across domain modules.
 
-Enums only — no fare multipliers or seat counts live here; those are config (D11)
+Enums only, no fare multipliers or seat counts live here; those are config (D11)
 and arrive as parameters so nothing is hardcoded in a rule.
 """
 
@@ -14,6 +14,9 @@ class BookingStatus(StrEnum):
     CONFIRMED = "CONFIRMED"
     CANCELLED = "CANCELLED"
     EXPIRED = "EXPIRED"
+    #: Unreserved overflow (D20). A live ticket with no seat. Occupies coach standing
+    #: capacity, so it stays outside ACTIVE_STATUSES.
+    STANDING = "STANDING"
 
 
 class CoachType(StrEnum):
@@ -27,12 +30,12 @@ class TravelClass(StrEnum):
     THIRD = "THIRD"
 
 
-#: Statuses that occupy a seat/leg — the scope of the overlap invariant (D2).
+#: Statuses that occupy a seat/leg, the scope of the overlap invariant (D2).
 ACTIVE_STATUSES: frozenset[BookingStatus] = frozenset(
     {BookingStatus.HELD, BookingStatus.CONFIRMED}
 )
 
-#: Terminal statuses — no transition leaves them.
+#: Terminal statuses, no transition leaves them.
 TERMINAL_STATUSES: frozenset[BookingStatus] = frozenset(
     {BookingStatus.CANCELLED, BookingStatus.EXPIRED}
 )

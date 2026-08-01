@@ -2,7 +2,7 @@
 
 A leg is `[origin_seq, dest_seq)` on integer sequence positions; km positions drive
 fares (fares.py), sequence positions drive occupancy. Two legs on one seat conflict
-iff their intervals overlap — the single rule the Postgres EXCLUDE constraint mirrors
+iff their intervals overlap, the single rule the Postgres EXCLUDE constraint mirrors
 in P3 (D2). Adjacent legs `[A,B)` and `[B,C)` do not overlap, so both book: that is
 segment resale.
 """

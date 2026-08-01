@@ -1,7 +1,7 @@
 """Source scan: the inner layers (domain + ports) carry no cost and no nondeterminism.
 
 import-linter stops framework *imports*; this stops the subtler leaks an import graph
-can't see — wall-clock reads, randomness, env, filesystem, sockets. Those must arrive
+can't see, wall-clock reads, randomness, env, filesystem, sockets. Those must arrive
 through an L1 port. Parsing via `ast` means comments and string literals are naturally
 excluded: *naming* `datetime.now` in a docstring is not a violation.
 """
@@ -109,6 +109,6 @@ def test_domain_and_ports_have_no_cost_or_nondeterminism():
         if v:
             offenders[str(path)] = v
     assert not offenders, (
-        "Inner layers must be pure — cost/nondeterminism found (route it through an "
+        "Inner layers must be pure, cost/nondeterminism found (route it through an "
         f"L1 port instead):\n{offenders}"
     )

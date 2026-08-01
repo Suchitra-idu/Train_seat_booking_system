@@ -1,5 +1,5 @@
 """Booking lifecycle (D6): HELD → CONFIRMED, and HELD/CONFIRMED → CANCELLED/EXPIRED.
-The machine is pure and clock-free — 'has the hold expired *in time*' is a use-case
+The machine is pure and clock-free, 'has the hold expired *in time*' is a use-case
 question (needs the Clock port); here we only police which status changes are legal.
 """
 
@@ -16,6 +16,11 @@ LEGAL = {
     (S.HELD, BookingEvent.CANCEL): S.CANCELLED,
     (S.HELD, BookingEvent.EXPIRE): S.EXPIRED,
     (S.CONFIRMED, BookingEvent.CANCEL): S.CANCELLED,
+    # A standing ticket (D20) mirrors a hold. Counter payment confirms it.
+    # It can also cancel or lapse. Seat promotion is a seat_id change.
+    (S.STANDING, BookingEvent.CONFIRM): S.CONFIRMED,
+    (S.STANDING, BookingEvent.CANCEL): S.CANCELLED,
+    (S.STANDING, BookingEvent.EXPIRE): S.EXPIRED,
 }
 
 

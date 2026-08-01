@@ -25,7 +25,7 @@ USECASE_TESTS = TESTS / "integration" / "usecases"
 
 
 def module_files(package_dir: Path) -> list[Path]:
-    """Public `.py` modules in a layer — skipping dunders and private `_`-prefixed files."""
+    """Public `.py` modules in a layer, skipping dunders and private `_`-prefixed files."""
     if not package_dir.is_dir():
         return []
     return sorted(

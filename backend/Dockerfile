@@ -12,7 +12,7 @@ COPY --from=ghcr.io/astral-sh/uv:0.11 /uv /usr/local/bin/uv
 
 WORKDIR /app
 
-# Dependency layer — cached until pyproject/lock change.
+# Dependency layer, cached until pyproject/lock change.
 COPY pyproject.toml ./
 COPY uv.lock* ./
 RUN uv sync --no-dev || uv sync

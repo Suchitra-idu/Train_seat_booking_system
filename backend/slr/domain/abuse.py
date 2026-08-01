@@ -2,7 +2,7 @@
 
 Each signal is saturated at a config scale, then combined as a weighted average → a
 value in [0,1]. Linear and monotonic on purpose: it's a placeholder for an ML model at
-the same seam (swap the function, keep the port). No threshold decision lives here — the
+the same seam (swap the function, keep the port). No threshold decision lives here, the
 use-case compares the score to a config cut-off.
 """
 
@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, fields
 
-#: (weight, scale) per signal — `scale` is the value at which the signal saturates to 1.
+#: (weight, scale) per signal, `scale` is the value at which the signal saturates to 1.
 Weight = tuple[float, float]
 
 

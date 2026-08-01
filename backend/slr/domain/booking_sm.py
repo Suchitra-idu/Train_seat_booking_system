@@ -1,4 +1,4 @@
-"""Booking status machine (D6) — pure transition guards, no clock.
+"""Booking status machine (D6), pure transition guards, no clock.
 
 Expiry-by-time and payment are use-case concerns; this module only says which status
 changes are legal. Cancelled and expired are terminal, so double-cancel and
@@ -24,6 +24,11 @@ _TRANSITIONS: dict[tuple[BookingStatus, BookingEvent], BookingStatus] = {
     (BookingStatus.HELD, BookingEvent.CANCEL): BookingStatus.CANCELLED,
     (BookingStatus.HELD, BookingEvent.EXPIRE): BookingStatus.EXPIRED,
     (BookingStatus.CONFIRMED, BookingEvent.CANCEL): BookingStatus.CANCELLED,
+    # A standing ticket (D20) mirrors a hold's lifecycle. Counter payment confirms it.
+    # It can also cancel or lapse. Seat promotion is a seat_id change with no event here.
+    (BookingStatus.STANDING, BookingEvent.CONFIRM): BookingStatus.CONFIRMED,
+    (BookingStatus.STANDING, BookingEvent.CANCEL): BookingStatus.CANCELLED,
+    (BookingStatus.STANDING, BookingEvent.EXPIRE): BookingStatus.EXPIRED,
 }
 
 

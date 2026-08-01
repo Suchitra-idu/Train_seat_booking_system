@@ -1,6 +1,6 @@
-"""Abuse heuristic (D9) — a pure score in [0,1] behind what will become the
+"""Abuse heuristic (D9), a pure score in [0,1] behind what will become the
 AbuseScorer port (heuristic now, ML-ready later). Weights/scales are config, so the
-tests assert *shape* — bounded, monotonic in every risk signal, zero on a clean actor —
+tests assert *shape*, bounded, monotonic in every risk signal, zero on a clean actor,
 plus one hand-computed oracle. No thresholding here; the use-case compares to a config.
 """
 

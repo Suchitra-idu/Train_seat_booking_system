@@ -1,4 +1,4 @@
-"""Fares are money — exact integer minor units, deterministic rounding. Where a
+"""Fares are money, exact integer minor units, deterministic rounding. Where a
 sourced figure exists (seat61 / SLR, PLAN §7) we assert against it as an oracle, not
 against our own arithmetic. Rates, class and demand multipliers are all parameters
 (D11): nothing here is hardcoded to Sri Lanka.
@@ -21,7 +21,7 @@ def test_money_is_exact_minor_units():
 
 # ── oracle: the Kandy leg (PLAN §7) ───────────────────────────────────────────
 # Colombo Fort→Kandy 2nd-class reserved is a sourced Rs 1,200 (seat61) over ~120 km.
-# At Rs 10.00/km that reproduces exactly — a hand-checkable reference point.
+# At Rs 10.00/km that reproduces exactly, a hand-checkable reference point.
 
 
 @pytest.mark.unit

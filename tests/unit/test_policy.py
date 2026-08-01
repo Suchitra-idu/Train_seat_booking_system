@@ -1,4 +1,4 @@
-"""Anti-tout predicates (D9) — parity with SLR's Aug-2025 verified-ID policy. Pure
+"""Anti-tout predicates (D9), parity with SLR's Aug-2025 verified-ID policy. Pure
 functions over a passenger's history and an injected `now` (epoch seconds); the clock
 lives in a port, never here. Limits/caps are parameters (D11). Boundaries are the whole
 point, so they are tested exactly.

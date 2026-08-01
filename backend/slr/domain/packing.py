@@ -1,4 +1,4 @@
-"""Seat-packing optimizer (D10) — pure interval partitioning.
+"""Seat-packing optimizer (D10), pure interval partitioning.
 
 Occupancy is a set of half-open leg intervals; packing them onto the fewest seats is
 interval-graph colouring, whose optimum is the maximum overlap depth. Greedy over
@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import heapq
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 
 from slr.domain.stations import Leg
 
@@ -79,3 +80,43 @@ def impact_seat_km(
     the leg's km. The difference is resellable seat-km the old model would have wasted.
     """
     return sum(route_km - leg.distance_km(km_by_seq) for leg in legs)
+
+
+@dataclass(frozen=True, slots=True)
+class SeatOffer:
+    """Seat `seat_index`, boarded at station `board_seq`, kept to the leg's end."""
+
+    board_seq: int
+    seat_index: int
+
+
+def _frees_for_remainder(seat_legs: Sequence[Leg], origin: int, dest: int) -> int | None:
+    """Earliest station in [origin, dest) where the seat is free to dest, else None."""
+    blocking = [b for b in seat_legs if b.origin_seq < dest and b.dest_seq > origin]
+    if not blocking:
+        return origin
+    frees_at = max(b.dest_seq for b in blocking)
+    return frees_at if frees_at < dest else None
+
+
+def predict_standing_seats(
+    seats: Sequence[Sequence[Leg]], queue: Sequence[Leg]
+) -> list[SeatOffer | None]:
+    """Standing overflow allocation (D20). For each standing passenger in FIFO order,
+    returns the earliest station and seat that serves the rest of their leg, or None to
+    stand the whole way. A seat counts only if free from the boarding station to the
+    destination. Earlier standees claim earlier-freeing seats. Ties go to the lower seat
+    index.
+    """
+    occupancy = [list(seat) for seat in seats]
+    offers: list[SeatOffer | None] = []
+    for leg in queue:
+        best: SeatOffer | None = None
+        for idx, seat_legs in enumerate(occupancy):
+            board = _frees_for_remainder(seat_legs, leg.origin_seq, leg.dest_seq)
+            if board is not None and (best is None or board < best.board_seq):
+                best = SeatOffer(board, idx)
+        offers.append(best)
+        if best is not None:
+            occupancy[best.seat_index].append(Leg(best.board_seq, leg.dest_seq))
+    return offers

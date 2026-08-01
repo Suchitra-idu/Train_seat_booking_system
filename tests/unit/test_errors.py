@@ -5,11 +5,14 @@ from slr.domain.errors import (
     IllegalTransition,
     InvalidLeg,
     NoFeasibleSeat,
+    OverlapError,
 )
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("err", [InvalidLeg, IllegalTransition, NoFeasibleSeat])
+@pytest.mark.parametrize(
+    "err", [InvalidLeg, IllegalTransition, NoFeasibleSeat, OverlapError]
+)
 def test_every_domain_error_is_a_domain_error(err):
     assert issubclass(err, DomainError)
     with pytest.raises(DomainError):
