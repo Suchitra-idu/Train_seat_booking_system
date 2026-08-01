@@ -3,7 +3,7 @@
 This tree implements **the Fullstack Hexagon**, the generic specification lives
 in [`FULLSTACK_ARCHITECTURE.md`](FULLSTACK_ARCHITECTURE.md). Read that for *why
 the shape*. This file is the map: where things go, and what stops them going
-anywhere else. The decisions (D1–D20) behind every deviation are in
+anywhere else. The decisions (D1–D21) behind every deviation are in
 [`PLAN.md`](PLAN.md); the build order and per-phase deliverables are in
 [`PHASES.md`](PHASES.md).
 
@@ -138,7 +138,7 @@ a registry"); we have two.
 <repo root>/
   FULLSTACK_ARCHITECTURE.md  generic spec (the why)
   ARCHITECTURE.md            this file (the map)
-  PLAN.md                    decisions D1–D20 + sourced evidence + run
+  PLAN.md                    decisions D1–D21 + sourced evidence + run
   PHASES.md                  build order + per-phase deliverables & gates
   docker-compose.yml         pg + migrate + seed + api + web (+ test / e2e profiles)
   Makefile                   check · lint · arch · test:{unit,int,e2e} · guard · demo-*

@@ -2,7 +2,7 @@
 
 The rebuild contract for the Colombo Fort–Badulla booking system. It binds the
 generic [`FULLSTACK_ARCHITECTURE.md`](FULLSTACK_ARCHITECTURE.md) to this concrete
-problem: what gets built, in what order, and the numbered decisions (D1–D20)
+problem: what gets built, in what order, and the numbered decisions (D1–D21)
 behind every non-obvious choice. Read the architecture for *why the shape*; read
 this for *what and when*.
 
@@ -37,13 +37,13 @@ README tells leadership.
 
 ---
 
-## 1. Decisions (D1–D20)
+## 1. Decisions (D1–D21)
 
 | # | Decision | Why / alternatives rejected |
 |---|---|---|
 | **D1** | **Stack:** FastAPI + SQLAlchemy 2.0 + Postgres (backend), **Svelte** + Vite + **JavaScript** (frontend), Docker Compose. Tests: pytest + Hypothesis + Testcontainers + Playwright + Vitest. | Closest to the user's Research Hexagon (import-linter enforceable), strong Postgres story for concurrency. Plain JS (not TS) on the FE, contract safety comes from *runtime* schema validation against OpenAPI (D13), not the compiler. **Svelte over React:** the complexity and marks live in the backend; the frontend hexagon is framework-agnostic (view-core is plain JS, only `ui/` is framework-bound), so the choice is free, pick the one already fluent to avoid burning budget learning a framework. Rejected TS-full-stack (less aligned) and Go (more boilerplate). |
 | **D2** | **Occupancy = half-open station intervals `[origin, destination)` + Postgres GiST `EXCLUDE` constraint.** Overlap is a *database invariant*, not app logic. | Adjacent legs `[A,B)` & `[B,C)` don't overlap → both book. Rejected `SELECT FOR UPDATE` (correctness in raceable app code) and `SERIALIZABLE`+retry (more moving parts, abort storms). The constraint is declarative and un-raceable. |
-| **D3** | **Unify both coach types on one mechanism: an unreserved coach is a reserved coach with hidden, auto-assigned seats.** N non-overlapping intervals across N virtual seats = per-leg capacity, enforced by the *same* `EXCLUDE` constraint. **Unreserved is booked in-app via an NIC-only, no-seat-picker flow**, the system auto-assigns the virtual seat; payment is at the counter by showing the issued code/QR (online `PaymentGateway` skipped; confirm is a counter/admin action, deferred with the admin side per D15, so the booking sits HELD until settled). | One occupancy model, one correctness proof, one code path. The packing optimizer (D10) picks the virtual seat. Unreserved-in-app is a deliberate, zero-friction enhancement over real-world walk-up ("catch the train quick"). Rejected a separate per-segment capacity-counter table (second concurrency mechanism to get right). |
+| **D3** | **Unify both coach types on one mechanism: an unreserved coach is a reserved coach with hidden, auto-assigned seats.** N non-overlapping intervals across N virtual seats = per-leg capacity, enforced by the *same* `EXCLUDE` constraint. **Unreserved is booked in-app via an NIC-only, no-seat-picker flow** that issues a code/QR and holds no seat (status `PENDING`). The seat is assigned at the ticket counter when payment is taken, by the packing optimizer or by standing (D20, D21). This puts the admin counter app in scope (revises D15). | One occupancy model, one correctness proof, one code path. The packing optimizer (D10) picks the virtual seat. Unreserved-in-app is a deliberate, zero-friction enhancement over real-world walk-up ("catch the train quick"). Rejected a separate per-segment capacity-counter table (second concurrency mechanism to get right). |
 | **D4** | **Fare = distance baseline + a demand/occupancy-aware `DynamicFare`, both behind a `FareStrategy` port.** `fare = rate_per_km · (km[dest] − km[origin]) · class_mult · demand_mult`. | Segment resale recovers the "empty leg," so reserved no longer needs the ~2× penalty, `DynamicFare` prices per-leg fairly. Directly answers leadership's revenue/fairness framing. Strategy seam keeps core pure. |
 | **D5** | **Scheduling:** `ServicePattern` (recurring template) → dated `Trip` instances; a `Booking` attaches to a `Trip`. Availability is per-Trip. | The honest "real product" model, the same seat on Aug 12 vs Aug 13 is independent. Rejected single-journey (too abstract) and dateless-templates (can't represent days). |
 | **D6** | **Lifecycle:** `reserve → HOLD(TTL) → confirm(mock pay) → CONFIRMED`; `cancel/expire → segment reopens → waitlist auto-promote`. | Hold prevents mid-checkout sniping; mock payment is a `PaymentGateway` port. Full lifecycle exercises concurrency at both hold and confirm. |
@@ -55,12 +55,13 @@ README tells leadership.
 | **D12** | **Hold expiry handled lazily inside the booking transaction** (expired holds for the target seat are retired before the new insert), plus a periodic sweeper for hygiene. | The partial `EXCLUDE ... WHERE status IN ('HELD','CONFIRMED')` can't reference `now()`; lazy retirement keeps correctness independent of the background job. |
 | **D13** | **Contract seam:** FastAPI's OpenAPI is the source of truth. The FE is plain **JavaScript**, so drift is caught at **runtime**: a generated JS client + contract tests validate every response against the OpenAPI schema, fake and real client alike. | No hand-copied shapes. Without a compiler, *runtime* schema validation is what makes a FE/BE mismatch a red build, arguably a stronger guarantee than trusting generated types. |
 | **D14** | **Enforcement:** import-linter (dependency rule + "use-cases never import a concrete adapter" + "frameworks out of L0/L1") + source-scan tests (no clock/rng/env/IO in inner layers) + a `guard` that plants a banned import and expects rejection. | Boundaries you can't run get crossed (architecture §5). |
-| **D15** | **No LLM agent, no admin panel** (explicitly de-scoped). The AI/ML surface is the `AbuseScorer` seam; an agent could later be added as a pure composition-root entrypoint over existing use-cases. | Focus on the segment/concurrency core; both are large for marginal payoff here. |
+| **D15** | **No LLM agent.** The admin counter app is now in scope (D21); it was de-scoped earlier. The AI/ML surface is the `AbuseScorer` seam; an agent could later be added as a pure composition-root entrypoint over existing use-cases. | Focus on the segment/concurrency core; an LLM agent is large for marginal payoff here. Counter settlement drives the unreserved flow, so its admin app earns its place. |
 | **D16** | **Waitlist promotion = FIFO among compatible entries.** On a freed segment, scan the Trip's waitlist oldest-first, attempt a hold for each; first that fits (constraint passes) is promoted and notified. | Simple, fair, reuses the hold path. |
 | **D17** | **Payment is a mock `PaymentGateway` port**; fake supports success and a forced-decline path for tests. No real money, no secrets. | Meets "mock payment" without PCI scope. |
 | **D18** | **Notifications via a `Notifier` port** (fake records; real logs / stub email) + an SSE toast on the client. | Waitlist promotion and confirmations need a channel; keep it swappable. |
 | **D19** | **Migrations via Alembic**, including `CREATE EXTENSION btree_gist` and the `EXCLUDE` constraint. Seed via a config-driven seeder run by compose. | One-command bring-up; the constraint is schema, not app code. |
-| **D20** | **Standing overflow for unreserved** (revises the old "cap at seat count, no standing" default). When no seat is free for the whole leg, issue a **STANDING** ticket, capped by config `standing_capacity` per coach, instead of "sold out", and predict the earliest station a seat frees for the rest of the journey: *"sit on seat X after station Y"*. Freed seats promote **FIFO to the earliest standing passenger** (D16's rule); standing pays the same per-leg unreserved fare. Whole-remainder promotion only, seat-then-stand-again is a labelled future extension. | Matches how unreserved really works (people stand; seats free as riders alight). Reuses the interval math + FIFO promotion with **no new mechanism**, the station/seat prediction is a pure `packing` sweep, property-testable like the rest. |
+| **D20** | **Standing overflow for unreserved** (revises the old "cap at seat count, no standing" default). When no seat is free for the whole leg, issue a **STANDING** ticket, capped by config `standing_capacity` per coach, instead of "sold out", and predict the earliest station a seat frees for the rest of the journey: *"sit on seat X after station Y"*. Freed seats promote **FIFO to the earliest standing passenger** (D16's rule); standing pays the same per-leg unreserved fare. Whole-remainder promotion only, seat-then-stand-again is a labelled future extension. The seat-or-standing outcome is decided at counter payment (D21). | Matches how unreserved really works (people stand; seats free as riders alight). Reuses the interval math + FIFO promotion with **no new mechanism**, the station/seat prediction is a pure `packing` sweep, property-testable like the rest. |
+| **D21** | **Admin counter app (shared backend, separate frontend).** The ticket counter scans the QR or enters the reference, sees the booking, and clicks "payment complete". The system assigns a seat (packing) or standing (D20), records the cash payment, transitions `PENDING → CONFIRMED` or `PENDING → STANDING`, and returns an invoice (reference, NIC, trip, service date, leg, seat or standing prediction, fare, timestamp). Auth is a shared counter key for the demo, with staff login as the production upgrade. The counter sells unreserved for now. | Seat-at-payment matches real counters and stops unpaid intents from holding capacity. One backend serves both apps; the admin frontend is a second hexagon over the same API and contract. Reuses the packing/standing domain with no new mechanism. |
 
 **Decisions to revisit** (sensible defaults set; flag if you disagree): classes
 modeled as a config attribute on each coach with a fare multiplier; currency is
@@ -78,9 +79,10 @@ Coach          id, code, type (RESERVED|UNRESERVED), class, seat_count,
                standing_capacity (unreserved only)          (from config)
 Seat           id, coach_id, label, is_visible (false for unreserved virtual seats)
 Passenger      id, name, nic_or_passport, email            (no account)
-Booking        id, trip_id, seat_id (null while standing), leg int4range '[)',
-               status (HELD|CONFIRMED|CANCELLED|EXPIRED|STANDING), passenger_id,
-               reference, fare_cents, held_until, idempotency_key, created_at
+Booking        id, trip_id, seat_id (null until seated), leg int4range '[)',
+               status (PENDING|HELD|CONFIRMED|CANCELLED|EXPIRED|STANDING),
+               passenger_id, reference, fare_cents, held_until, idempotency_key,
+               created_at
 WaitlistEntry  id, trip_id, leg int4range, class, passenger_id, status, created_at
 ```
 
@@ -171,12 +173,13 @@ is executable documentation of the contract). Use-cases depend on ports only.
 | **P1 Domain (L0)** | interval/overlap math (Hypothesis), fare functions (oracle tests), packing optimizer (optimality + property tests), booking state machine, anti-tout predicates, abuse heuristic. Zero I/O. | **UNIT**, every module property/example-tested |
 | **P2 Ports + fakes (L1/L2)** | all ports defined; in-memory fakes; one conformance suite per port (vs fake now). | **INTEGRATION** (fakes) |
 | **P3 Real adapters (L2)** | SQLAlchemy models + Alembic (`btree_gist`, `EXCLUDE`); real repo passes the same conformance suite; **concurrency-proof test** (N concurrent holds on one leg → exactly one wins); real pay/notify/abuse. | **INTEGRATION** (Testcontainers Postgres) |
-| **P4 Use-cases (L3)** | search, availability, quote, hold (caps+velocity+abuse+idempotency), confirm (pay), cancel (→promote), join_waitlist, optimizer-driven assign, impact metric. | **INTEGRATION** (all-fake; concurrency semantics pinned) |
-| **P5 Backend root (L4)** | FastAPI app, routes, DI, config, SSE stream, idempotency middleware, error→HTTP (409/422/409-hold), OpenAPI contract. | contract + thin **SYSTEM** |
+| **P4 Use-cases (L3)** | search, availability, quote, hold (caps+velocity+abuse+idempotency), confirm (pay), cancel (→promote), join_waitlist, book_unreserved (PENDING), settle_at_counter (assign seat/standing + confirm + invoice), lookup_booking, optimizer-driven assign, impact metric. | **INTEGRATION** (all-fake; concurrency semantics pinned) |
+| **P5 Backend root (L4)** | FastAPI app, routes, DI, config, SSE stream, idempotency middleware, error→HTTP (409/422/409-hold), admin routes (settle, lookup) with shared-counter-key auth, OpenAPI contract. | contract + thin **SYSTEM** |
 | **P6 Frontend** | view-core (unit) → ports + fake client → real client generated from OpenAPI, responses schema-validated + SSE → UI (route/seat/date pickers, **seat map** with per-leg availability colors, hold→confirm, optimistic + 409 UX, waitlist join) → app shell. | **UNIT** + **INTEGRATION** (fakes) + contract (runtime schema) |
+| **P6b Admin counter app** | second frontend hexagon (view-core → ports + fake client → real client → ui) for the ticket counter: scan/enter reference, view booking, take payment, print invoice; same backend via admin routes. | **UNIT** + **INTEGRATION** (fakes) + contract |
 | **P7 System / E2E** | Playwright over full compose: happy-path book; **two browsers race one seat** (one 409, handled); **segment resale** (A→B and B→C same seat both succeed); waitlist promotion; hold expiry. | **SYSTEM** |
 | **P8 Seed & config** | real Colombo Fort–Badulla stations + km, 8 coaches (3 reserved/5 unreserved), classes, fares, limits, all config/seed; `docker-compose up` seeds and runs from clean. | one-command bring-up verified |
-| **P9 Polish & docs** | README (design decisions + alternatives + challenges + extra-credit write-ups + the anti-tout/impact narrative), diagrams, concurrency-proof walkthrough. |, |
+| **P9 Polish & docs** | README (design decisions + alternatives + challenges + extra-credit write-ups + the anti-tout/impact narrative), diagrams, concurrency-proof walkthrough. | |
 
 Extra-credit features are woven through, not bolted on: the optimizer lives in
 P1+P4, anti-tout in P1+P4, the seat map in P6, the concurrency proof in P3, CI in
@@ -238,7 +241,7 @@ business/news, **[F]** seat61 fares, **[D]** derived from O/F figures,
 | **Anti-tout suite** (D9), *parity with live policy* | Scalper black market on reserved seats (Jan 2025 racket) | ~42-s sellouts; single ticket resold up to **LKR 40,000**; active **CID investigation**. SLR's own **Aug-2025** fix = named, **NIC-verified, non-transferable** tickets checked at boarding, we match it; segment resale (D2) attacks the underlying scarcity the ID rule leaves intact | [R]/[B]/[O] |
 | **Waitlisting w/ auto-promotion** (D16) | Instant sellouts leave genuine travelers stuck | 42-second sellouts on a network that carried **101,580,809 passengers in 2024** (109.9 mn in 2023); freed segments should re-offer, not vanish | [R]/[O] |
 | **Real-time SSE + robust conflict UX** (D7) | Unreliable official booking experience | Documented failures, "service not reachable", registration errors, public fraud suspicions | [R] |
-| **Concurrency proof + CI** (D14) | Resale raises write-contention on each seat → double-booking risk | No external stat, an engineering guarantee, *proven* by the N-concurrent test yielding exactly one winner |, |
+| **Concurrency proof + CI** (D14) | Resale raises write-contention on each seat → double-booking risk | No external stat, an engineering guarantee, *proven* by the N-concurrent test yielding exactly one winner | |
 
 The through-line for the write-up: **capacity + fair pricing are the core; touts,
 scarcity, and revenue are downstream wins**, quantified, not asserted.

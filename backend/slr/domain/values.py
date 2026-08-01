@@ -17,6 +17,9 @@ class BookingStatus(StrEnum):
     #: Unreserved overflow (D20). A live ticket with no seat. Occupies coach standing
     #: capacity, so it stays outside ACTIVE_STATUSES.
     STANDING = "STANDING"
+    #: Unreserved booked in the app, awaiting counter payment (D21). Holds no seat until
+    #: the counter assigns one, so it too stays outside ACTIVE_STATUSES.
+    PENDING = "PENDING"
 
 
 class CoachType(StrEnum):

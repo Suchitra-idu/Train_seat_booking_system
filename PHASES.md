@@ -2,7 +2,7 @@
 
 How the system gets built. Each phase **builds one ring of the
 [architecture](ARCHITECTURE.md), test-first, owned by the test tier that ring is
-assigned to.** Decisions behind the choices are D1–D20 in [`PLAN.md`](PLAN.md).
+assigned to.** Decisions behind the choices are D1–D21 in [`PLAN.md`](PLAN.md).
 
 > **This is a living plan.** Nothing here is fixed. Decisions, phase boundaries,
 > and deliverables can be changed, reordered, or dropped the moment a better
@@ -46,10 +46,11 @@ assigned to.** Decisions behind the choices are D1–D20 in [`PLAN.md`](PLAN.md)
 | P3 | Backend **L2 real adapters** | **integration** (real Postgres) |
 | P4 | Backend **L3 use-cases** | **integration** (fakes + thin real) |
 | P5 | Backend **L4 composition root** | **contract** + thin **system** |
-| P6 | Frontend **L0→L4** | **unit** + **integration** + **contract** |
+| P6 | Frontend **L0→L4** (user app) | **unit** + **integration** + **contract** |
+| P6b | Frontend **admin counter app** | **unit** + **integration** + **contract** |
 | P7 | Whole system | **system** (E2E) |
 | P8 | Seed & config realism | one-command bring-up |
-| P9 | Docs & polish |, |
+| P9 | Docs & polish | none |
 
 ---
 
@@ -129,10 +130,13 @@ adapters (fast, deterministic), so concurrency/error semantics are pinned withou
 infrastructure; a thin real pass covers `hold`/`confirm`.
 
 **Deliverables**, `search_trips`, `leg_availability`, `quote_fare`,
-`hold_seat` (validate leg → caps/velocity/abuse → seat assignment via `packing`
-for unreserved / requested seat for reserved → `add_hold` → idempotency),
-`confirm_booking` (payment → transition), `cancel_booking` (→ `promote_waitlist`),
-`join_waitlist`, `promote_waitlist` (FIFO among compatible, D16), `impact_report`.
+`hold_seat` (reserved: validate leg → caps/velocity/abuse → requested seat →
+`add_hold` → idempotency), `book_unreserved` (NIC-only: caps/velocity/abuse →
+`PENDING` booking + code/QR, no seat yet), `settle_at_counter` (assign a seat via
+`packing` or standing via D20 → record payment → `PENDING → CONFIRMED`/`STANDING`
+→ invoice), `lookup_booking`, `confirm_booking` (reserved online payment →
+transition), `cancel_booking` (→ `promote_waitlist`), `join_waitlist`,
+`promote_waitlist` (FIFO among compatible, D16), `impact_report`.
 
 **Exit gate**, every use-case has a fake-based test (test-doctrine check);
 error paths (cap exceeded, overlap→409, payment declined, expired hold) covered;
@@ -147,9 +151,9 @@ exercises directly.**
 
 **Deliverables**, FastAPI `main.py` + `wiring.py` (real adapters injected),
 `config.py`, `schemas.py` (Pydantic = the **contract source**), `routes/`
-(trips, availability, `bookings` hold→confirm→cancel, waitlist, **SSE** stream),
-`middleware/idempotency.py`, `errors.py` (Overlap→409, Cap→429, Invalid→422),
-OpenAPI emitted to `contract/`.
+(trips, availability, `bookings` hold→confirm→cancel, waitlist, **SSE** stream,
+`admin` lookup + settle behind a shared counter key), `middleware/idempotency.py`,
+`errors.py` (Overlap→409, Cap→429, Invalid→422), OpenAPI emitted to `contract/`.
 
 **Exit gate**, OpenAPI generated; contract tests assert routes emit the schema;
 app boots in compose behind a healthcheck; a thin API-level system test books a seat end-to-end.
@@ -171,6 +175,29 @@ client → UI → shell.
 `ApiClient`; contract test validates the real client's responses against the
 OpenAPI schema at runtime (no FE compiler, this is what holds the seam);
 dependency-cruiser passes (no `fetch` outside `adapters/`).
+
+---
+
+## P6b: Admin counter app · tier: UNIT + INTEGRATION + CONTRACT
+
+The ticket-counter app. A second frontend hexagon over the same backend and contract.
+Seat assignment for unreserved happens here at payment time (D21).
+
+**Deliverables**
+- Backend (lands with P4/P5): `book_unreserved` issues a `PENDING` booking with a code/QR;
+  `lookup_booking(reference)` feeds the counter screen; `settle_at_counter` assigns a seat
+  (packing) or standing (D20), records the cash payment, transitions `PENDING →
+  CONFIRMED`/`STANDING`, and returns the invoice. Admin routes sit behind a shared counter
+  key.
+- `view-core/` (unit): `invoice` (format), `settle` (counter-flow reducer).
+- `ports/` + `adapters/`: reuse the generated `api-client` for the admin routes, fake first.
+- `ui/` (integration on the fake client): reference/QR entry, booking view, payment button,
+  printed invoice (reference, NIC, trip, leg, seat or standing prediction, fare).
+- `app/` admin shell, counter-key config.
+
+**Exit gate**, view-core unit-tested; components tested on the fake `ApiClient`; a contract
+test validates the admin responses against the OpenAPI schema; a settle flow turns a
+`PENDING` booking into a `CONFIRMED` seat or a `STANDING` prediction with an invoice.
 
 ---
 
@@ -206,7 +233,7 @@ yields a usable, seeded app; the config-drives-counts test is green.
 ## P9: Docs & polish
 
 **Deliverables**, `README.md`: core design decisions + alternatives rejected
-(from PLAN D1–D20), the sourced evidence + the transparent per-km derivation, the
+(from PLAN D1–D21), the sourced evidence + the transparent per-km derivation, the
 concurrency-proof walkthrough, extra-credit write-ups, and the run instructions.
 Architecture diagram; `make demo-*` scripts referenced. Repo made public.
 

@@ -3,8 +3,12 @@ name = "slr-booking"
 version = "0.0.0"
 description = "Segment-based train seat booking system (Colombo Fort–Badulla)"
 requires-python = ">=3.12"
-# Runtime deps land in later phases (SQLAlchemy in P3, FastAPI in P5). P0 is rails only.
-dependencies = []
+# FastAPI lands in P5. P3 adds the persistence stack for the real repository adapter.
+dependencies = [
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
+    "psycopg[binary]>=3.1",
+]
 
 [dependency-groups]
 dev = [
@@ -14,6 +18,7 @@ dev = [
     "ruff>=0.6",
     "mypy>=1.11",
     "import-linter>=2.0",
+    "testcontainers[postgres]>=4.0",
 ]
 
 # uv manages a venv but does not try to build/install `slr` — the package is put on
@@ -41,6 +46,8 @@ warn_unused_configs = true
 [[tool.mypy.overrides]]
 module = ["slr.adapters.*", "slr.app.*"]
 disallow_untyped_defs = false
+disallow_any_generics = false
+warn_return_any = false
 
 # ─── pytest ──────────────────────────────────────────────────────────────
 [tool.pytest.ini_options]

@@ -12,7 +12,7 @@ from slr.domain.values import (
 @pytest.mark.unit
 def test_booking_statuses_are_distinct_strings():
     values = [s.value for s in BookingStatus]
-    assert values == ["HELD", "CONFIRMED", "CANCELLED", "EXPIRED", "STANDING"]
+    assert values == ["HELD", "CONFIRMED", "CANCELLED", "EXPIRED", "STANDING", "PENDING"]
     assert len(set(values)) == len(values)
 
 
@@ -25,11 +25,12 @@ def test_active_and_terminal_partition_the_lifecycle():
 
 
 @pytest.mark.unit
-def test_standing_is_live_but_holds_no_seat():
-    # A standing ticket (D20) is live but occupies coach standing capacity.
-    # It sits outside the seat-overlap invariant's scope.
-    assert BookingStatus.STANDING not in ACTIVE_STATUSES
-    assert BookingStatus.STANDING not in TERMINAL_STATUSES
+def test_seatless_statuses_are_outside_the_invariant_scope():
+    # PENDING (awaiting counter payment, D21) and STANDING (D20) are both live and hold
+    # no seat, so neither is active and neither is terminal.
+    for status in (BookingStatus.PENDING, BookingStatus.STANDING):
+        assert status not in ACTIVE_STATUSES
+        assert status not in TERMINAL_STATUSES
 
 
 @pytest.mark.unit

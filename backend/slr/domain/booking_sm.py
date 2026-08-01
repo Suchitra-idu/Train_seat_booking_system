@@ -15,6 +15,7 @@ from slr.domain.values import BookingStatus
 
 class BookingEvent(StrEnum):
     CONFIRM = "CONFIRM"
+    STAND = "STAND"
     CANCEL = "CANCEL"
     EXPIRE = "EXPIRE"
 
@@ -24,11 +25,15 @@ _TRANSITIONS: dict[tuple[BookingStatus, BookingEvent], BookingStatus] = {
     (BookingStatus.HELD, BookingEvent.CANCEL): BookingStatus.CANCELLED,
     (BookingStatus.HELD, BookingEvent.EXPIRE): BookingStatus.EXPIRED,
     (BookingStatus.CONFIRMED, BookingEvent.CANCEL): BookingStatus.CANCELLED,
-    # A standing ticket (D20) mirrors a hold's lifecycle. Counter payment confirms it.
-    # It can also cancel or lapse. Seat promotion is a seat_id change with no event here.
+    # Unreserved settles at the counter (D21). Paid with a seat gives CONFIRMED, paid with
+    # a full coach gives STANDING. Unpaid intent cancels or lapses.
+    (BookingStatus.PENDING, BookingEvent.CONFIRM): BookingStatus.CONFIRMED,
+    (BookingStatus.PENDING, BookingEvent.STAND): BookingStatus.STANDING,
+    (BookingStatus.PENDING, BookingEvent.CANCEL): BookingStatus.CANCELLED,
+    (BookingStatus.PENDING, BookingEvent.EXPIRE): BookingStatus.EXPIRED,
+    # A standing passenger takes a seat when one frees (D20).
     (BookingStatus.STANDING, BookingEvent.CONFIRM): BookingStatus.CONFIRMED,
     (BookingStatus.STANDING, BookingEvent.CANCEL): BookingStatus.CANCELLED,
-    (BookingStatus.STANDING, BookingEvent.EXPIRE): BookingStatus.EXPIRED,
 }
 
 

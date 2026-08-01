@@ -16,11 +16,15 @@ LEGAL = {
     (S.HELD, BookingEvent.CANCEL): S.CANCELLED,
     (S.HELD, BookingEvent.EXPIRE): S.EXPIRED,
     (S.CONFIRMED, BookingEvent.CANCEL): S.CANCELLED,
-    # A standing ticket (D20) mirrors a hold. Counter payment confirms it.
-    # It can also cancel or lapse. Seat promotion is a seat_id change.
+    # Unreserved settles at the counter (D21). Paid with a seat gives CONFIRMED, paid
+    # with a full coach gives STANDING. Unpaid intent cancels or lapses.
+    (S.PENDING, BookingEvent.CONFIRM): S.CONFIRMED,
+    (S.PENDING, BookingEvent.STAND): S.STANDING,
+    (S.PENDING, BookingEvent.CANCEL): S.CANCELLED,
+    (S.PENDING, BookingEvent.EXPIRE): S.EXPIRED,
+    # A standing passenger takes a seat when one frees (D20).
     (S.STANDING, BookingEvent.CONFIRM): S.CONFIRMED,
     (S.STANDING, BookingEvent.CANCEL): S.CANCELLED,
-    (S.STANDING, BookingEvent.EXPIRE): S.EXPIRED,
 }
 
 

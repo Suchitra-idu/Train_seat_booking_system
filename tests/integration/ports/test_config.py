@@ -1,15 +1,16 @@
-"""Config conformance. Typed reads. A missing key raises KeyError."""
+"""Config conformance. Typed reads; a missing key raises KeyError, for fake and real."""
 
 import pytest
 
+from slr.adapters.env_config import EnvConfig
 from slr.adapters.fixture_config import FixtureConfig
 
+VALUES = {"hold_ttl_seconds": "600", "rate_per_km_cents": "1000", "route_code": "CMB-BAD"}
 
-@pytest.fixture
-def config():
-    return FixtureConfig(
-        {"hold_ttl_seconds": 600, "rate_per_km_cents": "1000", "route_code": "CMB-BAD"}
-    )
+
+@pytest.fixture(params=["fake", "real"])
+def config(request):
+    return FixtureConfig(VALUES) if request.param == "fake" else EnvConfig(VALUES)
 
 
 @pytest.mark.integration

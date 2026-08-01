@@ -1,13 +1,14 @@
-"""Clock conformance. Runs against the fake now, the real system clock in P3."""
+"""Clock conformance. now() returns non-decreasing epoch seconds, for fake and real."""
 
 import pytest
 
 from slr.adapters.fake_clock import FakeClock
+from slr.adapters.system_clock import SystemClock
 
 
-@pytest.fixture
-def clock():
-    return FakeClock(start=1_000)
+@pytest.fixture(params=["fake", "real"])
+def clock(request):
+    return FakeClock(start=1_000) if request.param == "fake" else SystemClock()
 
 
 @pytest.mark.integration
@@ -17,13 +18,12 @@ def test_now_returns_int_epoch_seconds(clock):
 
 @pytest.mark.integration
 def test_now_is_non_decreasing(clock):
-    a = clock.now()
-    b = clock.now()
-    assert b >= a
+    assert clock.now() <= clock.now()
 
 
 @pytest.mark.integration
-def test_fake_advances_and_refuses_to_rewind(clock):
+def test_fake_advances_and_refuses_to_rewind():
+    clock = FakeClock(start=1_000)
     clock.advance(60)
     assert clock.now() == 1_060
     with pytest.raises(ValueError):

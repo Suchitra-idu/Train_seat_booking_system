@@ -6,6 +6,7 @@ adapter in P3.
 import pytest
 
 from slr.adapters.memory_repo import MemoryUnitOfWork
+from slr.adapters.sqlalchemy_repo import SqlAlchemyUnitOfWork, insert_trip
 from slr.domain.errors import OverlapError
 from slr.domain.stations import Leg, Station
 from slr.domain.values import BookingStatus, CoachType, TravelClass
@@ -52,9 +53,20 @@ def make_hold(
     )
 
 
-@pytest.fixture
-def uow():
-    return MemoryUnitOfWork(trips=[make_trip()])
+@pytest.fixture(params=["memory", "postgres"])
+def uow(request):
+    """The same suite runs against the in-memory fake and the real Postgres adapter."""
+    trip = make_trip()
+    if request.param == "memory":
+        yield MemoryUnitOfWork(trips=[trip])
+        return
+    factory = request.getfixturevalue("pg_session_factory")
+    seed = factory()
+    insert_trip(seed, trip)
+    seed.close()
+    unit = SqlAlchemyUnitOfWork(factory)
+    yield unit
+    unit.close()
 
 
 # ── the overlap invariant (D2) ────────────────────────────────────────────────
@@ -165,8 +177,7 @@ def test_trip_get_and_find(uow):
 
 
 @pytest.mark.integration
-def test_waitlist_next_compatible_is_fifo_among_servable():
-    uow = MemoryUnitOfWork()
+def test_waitlist_next_compatible_is_fifo_among_servable(uow):
     w = uow.waitlist
     w.add(WaitlistEntry("e1", "trip-1", Leg(0, 2), "p1", TravelClass.SECOND, created_at=5))
     w.add(WaitlistEntry("e2", "trip-1", Leg(0, 4), "p2", TravelClass.SECOND, created_at=3))
@@ -182,8 +193,7 @@ def test_waitlist_next_compatible_is_fifo_among_servable():
 
 
 @pytest.mark.integration
-def test_waitlist_remove_and_for_trip():
-    uow = MemoryUnitOfWork()
+def test_waitlist_remove_and_for_trip(uow):
     w = uow.waitlist
     w.add(WaitlistEntry("e1", "trip-1", Leg(0, 2), "p1", TravelClass.SECOND, created_at=1))
     w.add(WaitlistEntry("e2", "trip-2", Leg(0, 2), "p2", TravelClass.SECOND, created_at=1))

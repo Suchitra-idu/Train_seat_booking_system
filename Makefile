@@ -55,8 +55,8 @@ guard: ## Plant a banned import in the pure core; import-linter MUST reject it
 	  echo "✓ gate alive: banned import rejected, cleaned up"; \
 	fi
 
-demo-concurrency: ## Fire N holds at one seat/leg → "1 booked, N−1 got 409" (P3)
-	@echo "demo-concurrency lands with the real repo in P3"
+demo-concurrency: ## Fire N holds at one seat/leg → "1 booked, N−1 got 409"
+	$(UV) python scripts/demo_concurrency.py
 
 demo-resale: ## A→B and B→C on the same seat both succeed (P7)
 	@echo "demo-resale lands with the E2E journey in P7"
