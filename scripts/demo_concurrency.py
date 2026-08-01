@@ -12,11 +12,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from slr.adapters.orm import create_schema
-from slr.adapters.sqlalchemy_repo import SqlAlchemyUnitOfWork, insert_trip
+from slr.adapters.sqlalchemy_repo import SqlAlchemyUnitOfWork, upsert_trip
 from slr.domain.errors import OverlapError
 from slr.domain.stations import Leg, Station
+from slr.domain.timetable import Stop
 from slr.domain.values import BookingStatus, CoachType, TravelClass
-from slr.ports.repository import Hold, Seat, Trip
+from slr.ports.repository import Coach, Hold, Seat, Trip
 
 N = 10
 
@@ -34,8 +35,25 @@ def _trip() -> Trip:
         Station(code=f"S{i}", name=f"Station {i}", seq=i, km=float(i * 10))
         for i in range(6)
     )
-    seats = (Seat("seat-1", "C1", CoachType.RESERVED, TravelClass.SECOND, 1),)
-    return Trip("trip-1", "CMB-BAD", "2026-08-01", stations, seats)
+    stops = tuple(
+        Stop(
+            station_seq=i,
+            arrive_min=None if i == 0 else 480 + i * 60,
+            depart_min=None if i == 5 else 485 + i * 60,
+        )
+        for i in range(6)
+    )
+    return Trip(
+        trip_id="trip-1",
+        route_code="CMB-BAD",
+        service_date="2026-08-01",
+        train_no="1005",
+        train_name="Demo Express",
+        stations=stations,
+        stops=stops,
+        coaches=(Coach("C1", CoachType.RESERVED, TravelClass.SECOND, 1, "1-0"),),
+        seats=(Seat("seat-1", "C1", CoachType.RESERVED, TravelClass.SECOND, 1, 1, "A"),),
+    )
 
 
 def _hold(i: int) -> Hold:
@@ -46,8 +64,10 @@ def _hold(i: int) -> Hold:
         seat_id="seat-1",
         leg=Leg(0, 3),
         passenger_id=f"p{i}",
+        passenger_name=f"Passenger {i}",
         travel_class=TravelClass.SECOND,
         status=BookingStatus.HELD,
+        fare_cents=10_000,
         held_until=1_000,
         created_at=0,
     )
@@ -59,7 +79,8 @@ def main() -> None:
         create_schema(engine)
         factory = sessionmaker(bind=engine)
         seed = factory()
-        insert_trip(seed, _trip())
+        upsert_trip(seed, _trip())
+        seed.commit()
         seed.close()
 
         barrier = threading.Barrier(N)

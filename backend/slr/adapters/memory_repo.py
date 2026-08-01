@@ -12,23 +12,15 @@ from dataclasses import replace
 from types import TracebackType
 
 from slr.domain.errors import OverlapError
-from slr.domain.stations import Leg
-from slr.domain.values import ACTIVE_STATUSES, BookingStatus, TravelClass
-from slr.ports.repository import (
-    BookingRepository,
-    Hold,
-    Trip,
-    TripRepository,
-    WaitlistEntry,
-    WaitlistRepository,
-)
+from slr.domain.timetable import departure_min
+from slr.domain.values import ACTIVE_STATUSES, BookingStatus
+from slr.ports.repository import BookingRepository, Hold, Trip, TripRepository
 
 
 class _Store:
     def __init__(self) -> None:
         self.holds: dict[str, Hold] = {}
         self.trips: dict[str, Trip] = {}
-        self.waitlist: dict[str, WaitlistEntry] = {}
 
 
 class MemoryTripRepository:
@@ -38,12 +30,11 @@ class MemoryTripRepository:
     def get(self, trip_id: str) -> Trip:
         return self._store.trips[trip_id]
 
-    def find(self, route_code: str, service_date: str) -> list[Trip]:
-        return [
-            t
-            for t in self._store.trips.values()
-            if t.route_code == route_code and t.service_date == service_date
-        ]
+    def find_by_date(self, service_date: str) -> list[Trip]:
+        return sorted(
+            (t for t in self._store.trips.values() if t.service_date == service_date),
+            key=lambda t: (departure_min(t.stops), t.trip_id),
+        )
 
 
 class MemoryBookingRepository:
@@ -72,20 +63,6 @@ class MemoryBookingRepository:
 
     def set_status(self, booking_id: str, status: BookingStatus) -> Hold:
         updated = replace(self._store.holds[booking_id], status=status)
-        self._store.holds[booking_id] = updated
-        return updated
-
-    def assign_seat(self, booking_id: str, seat_id: str) -> Hold:
-        hold = self._store.holds[booking_id]
-        for existing in self.active_for_seat(hold.trip_id, seat_id):
-            if existing.booking_id == booking_id:
-                continue
-            if existing.leg.overlaps(hold.leg):
-                raise OverlapError(
-                    f"seat {seat_id} already held over {existing.leg} "
-                    f"on trip {hold.trip_id}"
-                )
-        updated = replace(hold, seat_id=seat_id)
         self._store.holds[booking_id] = updated
         return updated
 
@@ -131,37 +108,6 @@ class MemoryBookingRepository:
         return expired
 
 
-class MemoryWaitlistRepository:
-    def __init__(self, store: _Store) -> None:
-        self._store = store
-
-    def add(self, entry: WaitlistEntry) -> None:
-        self._store.waitlist[entry.waitlist_id] = entry
-
-    def next_compatible(
-        self, trip_id: str, leg: Leg, travel_class: TravelClass
-    ) -> WaitlistEntry | None:
-        # FIFO among entries the freed segment can serve: the freed leg must cover the
-        # waiter's leg (waiter's interval within the freed interval).
-        servable = [
-            e
-            for e in self._store.waitlist.values()
-            if e.trip_id == trip_id
-            and e.travel_class == travel_class
-            and leg.origin_seq <= e.leg.origin_seq
-            and e.leg.dest_seq <= leg.dest_seq
-        ]
-        if not servable:
-            return None
-        return min(servable, key=lambda e: (e.created_at, e.waitlist_id))
-
-    def remove(self, waitlist_id: str) -> None:
-        self._store.waitlist.pop(waitlist_id, None)
-
-    def for_trip(self, trip_id: str) -> list[WaitlistEntry]:
-        return [e for e in self._store.waitlist.values() if e.trip_id == trip_id]
-
-
 class MemoryUnitOfWork:
     def __init__(
         self, store: _Store | None = None, *, trips: Iterable[Trip] = ()
@@ -171,17 +117,10 @@ class MemoryUnitOfWork:
             self._store.trips[trip.trip_id] = trip
         self.bookings: BookingRepository = MemoryBookingRepository(self._store)
         self.trips: TripRepository = MemoryTripRepository(self._store)
-        self.waitlist: WaitlistRepository = MemoryWaitlistRepository(self._store)
-        self._snapshot: (
-            tuple[dict[str, Hold], dict[str, Trip], dict[str, WaitlistEntry]] | None
-        ) = None
+        self._snapshot: tuple[dict[str, Hold], dict[str, Trip]] | None = None
 
     def __enter__(self) -> MemoryUnitOfWork:
-        self._snapshot = (
-            dict(self._store.holds),
-            dict(self._store.trips),
-            dict(self._store.waitlist),
-        )
+        self._snapshot = (dict(self._store.holds), dict(self._store.trips))
         return self
 
     def __exit__(
@@ -200,8 +139,7 @@ class MemoryUnitOfWork:
 
     def rollback(self) -> None:
         if self._snapshot is not None:
-            holds, trips, waitlist = self._snapshot
+            holds, trips = self._snapshot
             self._store.holds = holds
             self._store.trips = trips
-            self._store.waitlist = waitlist
             self._snapshot = None

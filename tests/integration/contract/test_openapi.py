@@ -9,15 +9,24 @@ import pytest
 from scripts.emit_openapi import CONTRACT, build_schema
 
 _EXPECTED = {
-    ("get", "/trips"),
+    ("get", "/search"),
+    ("get", "/trips/{trip_id}"),
     ("get", "/trips/{trip_id}/availability"),
     ("get", "/trips/{trip_id}/impact"),
     ("get", "/trips/{trip_id}/stream"),
     ("post", "/quote"),
     ("post", "/bookings/hold"),
-    ("post", "/unreserved"),
     ("post", "/bookings/{booking_id}/confirm"),
     ("post", "/bookings/{booking_id}/cancel"),
+    ("post", "/admin/unreserved/sell"),
+    ("get", "/admin/verify/{reference}"),
+}
+
+#: Withdrawn with D16 (waitlist), D23 (unreserved in the public app) and D24 (public
+#: lookup by reference). A route that comes back is a regression, not a feature.
+_WITHDRAWN = {
+    ("get", "/trips"),
+    ("post", "/unreserved"),
     ("get", "/bookings/{reference}"),
     ("post", "/waitlist"),
     ("post", "/waitlist/promote"),
@@ -39,3 +48,10 @@ def test_every_expected_route_is_in_the_contract():
     paths = build_schema()["paths"]
     live = {(method, path) for path, ops in paths.items() for method in ops}
     assert live >= _EXPECTED
+
+
+@pytest.mark.contract
+def test_no_withdrawn_route_came_back():
+    paths = build_schema()["paths"]
+    live = {(method, path) for path, ops in paths.items() for method in ops}
+    assert not (live & _WITHDRAWN)

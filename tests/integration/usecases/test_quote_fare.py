@@ -38,7 +38,7 @@ def test_occupancy_rises_as_seats_fill_over_the_leg():
         seat_id="R1",
         leg=Leg(0, 3),
         passenger_id="p1",
-        travel_class=TravelClass.SECOND,
+        passenger_name="Ann Perera",
     )
     quote_fare(deps, trip_id="trip-1", leg=Leg(1, 2), travel_class=TravelClass.SECOND)
     assert fare.calls[-1][2] == pytest.approx(1 / 5)

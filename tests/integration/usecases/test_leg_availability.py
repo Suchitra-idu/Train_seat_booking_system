@@ -2,7 +2,6 @@ import pytest
 from tests.integration.usecases._helpers import build
 
 from slr.domain.stations import Leg
-from slr.domain.values import TravelClass
 from slr.usecases.hold_seat import hold_seat
 from slr.usecases.leg_availability import leg_availability
 
@@ -24,7 +23,7 @@ def test_a_held_seat_is_unavailable_only_over_the_overlapping_leg():
         seat_id="R1",
         leg=Leg(0, 3),
         passenger_id="p1",
-        travel_class=TravelClass.SECOND,
+        passenger_name="Ann Perera",
     )
     over = {
         s.seat_id: s.available
@@ -47,7 +46,7 @@ def test_expired_hold_frees_the_seat():
         seat_id="R1",
         leg=Leg(0, 3),
         passenger_id="p1",
-        travel_class=TravelClass.SECOND,
+        passenger_name="Ann Perera",
     )
     deps.clock.advance(10_000)  # past the hold TTL
     view = leg_availability(deps, trip_id="trip-1", leg=Leg(0, 3))

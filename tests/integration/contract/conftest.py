@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
-from tests.integration.usecases._helpers import make_trip
+from tests.integration.usecases._helpers import TODAY, make_trip
 
 from slr.app.config import Settings
 from slr.app.main import create_app
@@ -28,5 +28,5 @@ def _settings() -> Settings:
 
 @pytest.fixture
 def client() -> TestClient:
-    container = wire_fake((make_trip(),))
+    container = wire_fake((make_trip(service_date=TODAY),))
     return TestClient(create_app(container=container, settings=_settings()))

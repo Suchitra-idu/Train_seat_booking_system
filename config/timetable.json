@@ -1,0 +1,130 @@
+{
+  "route": {
+    "code": "CMB-BAD",
+    "name": "Main Line: Colombo Fort to Badulla",
+    "stations": [
+      { "code": "FORT", "name": "Colombo Fort", "km": 0.0 },
+      { "code": "RGM", "name": "Ragama", "km": 14.0 },
+      { "code": "GPH", "name": "Gampaha", "km": 28.0 },
+      { "code": "PLG", "name": "Polgahawela", "km": 74.0 },
+      { "code": "KDY", "name": "Kandy", "km": 121.0 },
+      { "code": "NWE", "name": "Nawalapitiya", "km": 148.0 },
+      { "code": "HTN", "name": "Hatton", "km": 179.0 },
+      { "code": "NNO", "name": "Nanu Oya", "km": 224.0 },
+      { "code": "HPT", "name": "Haputale", "km": 253.0 },
+      { "code": "ELA", "name": "Ella", "km": 273.0 },
+      { "code": "BAD", "name": "Badulla", "km": 292.0 }
+    ]
+  },
+
+  "coach_layouts": {
+    "first-observation": {
+      "coach_type": "RESERVED",
+      "travel_class": "FIRST",
+      "rows": 8,
+      "columns": "2-2",
+      "exit_rows": [4]
+    },
+    "second-reserved": {
+      "coach_type": "RESERVED",
+      "travel_class": "SECOND",
+      "rows": 13,
+      "columns": "3-3",
+      "exit_rows": [5, 9]
+    },
+    "third-reserved": {
+      "coach_type": "RESERVED",
+      "travel_class": "THIRD",
+      "rows": 14,
+      "columns": "3-3",
+      "exit_rows": [7]
+    },
+    "second-unreserved": {
+      "coach_type": "UNRESERVED",
+      "travel_class": "SECOND",
+      "rows": 14,
+      "columns": "3-3",
+      "exit_rows": [7]
+    },
+    "third-unreserved": {
+      "coach_type": "UNRESERVED",
+      "travel_class": "THIRD",
+      "rows": 16,
+      "columns": "3-3",
+      "exit_rows": [8]
+    }
+  },
+
+  "service_patterns": [
+    {
+      "code": "1005",
+      "train_no": "1005",
+      "name": "Podi Menike",
+      "days_of_week": ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"],
+      "coaches": [
+        { "code": "A", "layout": "first-observation" },
+        { "code": "B", "layout": "second-reserved" },
+        { "code": "C", "layout": "third-reserved" },
+        { "code": "D", "layout": "second-unreserved" },
+        { "code": "E", "layout": "third-unreserved" }
+      ],
+      "stops": [
+        { "station": "FORT", "depart": "05:55" },
+        { "station": "RGM", "arrive": "06:18", "depart": "06:20" },
+        { "station": "GPH", "arrive": "06:38", "depart": "06:40" },
+        { "station": "PLG", "arrive": "07:40", "depart": "07:45" },
+        { "station": "KDY", "arrive": "08:47", "depart": "08:55" },
+        { "station": "NWE", "arrive": "09:40", "depart": "09:45" },
+        { "station": "HTN", "arrive": "11:05", "depart": "11:10" },
+        { "station": "NNO", "arrive": "12:25", "depart": "12:35" },
+        { "station": "HPT", "arrive": "13:55", "depart": "14:00" },
+        { "station": "ELA", "arrive": "14:45", "depart": "14:50" },
+        { "station": "BAD", "arrive": "15:55" }
+      ]
+    },
+    {
+      "code": "1015",
+      "train_no": "1015",
+      "name": "Udarata Menike",
+      "days_of_week": ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"],
+      "coaches": [
+        { "code": "A", "layout": "second-reserved" },
+        { "code": "B", "layout": "third-reserved" },
+        { "code": "C", "layout": "second-unreserved" },
+        { "code": "D", "layout": "third-unreserved" }
+      ],
+      "stops": [
+        { "station": "FORT", "depart": "09:45" },
+        { "station": "RGM", "arrive": "10:08", "depart": "10:10" },
+        { "station": "PLG", "arrive": "11:25", "depart": "11:30" },
+        { "station": "NWE", "arrive": "13:05", "depart": "13:10" },
+        { "station": "HTN", "arrive": "14:30", "depart": "14:35" },
+        { "station": "NNO", "arrive": "15:50", "depart": "16:00" },
+        { "station": "HPT", "arrive": "17:20", "depart": "17:25" },
+        { "station": "ELA", "arrive": "18:10", "depart": "18:15" },
+        { "station": "BAD", "arrive": "19:20" }
+      ]
+    },
+    {
+      "code": "1045",
+      "train_no": "1045",
+      "name": "Denuwara Menike",
+      "days_of_week": ["FRI", "SAT", "SUN"],
+      "coaches": [
+        { "code": "A", "layout": "first-observation" },
+        { "code": "B", "layout": "second-reserved" },
+        { "code": "C", "layout": "second-unreserved" }
+      ],
+      "stops": [
+        { "station": "FORT", "depart": "20:00" },
+        { "station": "GPH", "arrive": "20:45", "depart": "20:47" },
+        { "station": "PLG", "arrive": "21:40", "depart": "21:45" },
+        { "station": "KDY", "arrive": "22:45", "depart": "22:55" },
+        { "station": "NWE", "arrive": "23:40", "depart": "23:45" },
+        { "station": "NNO", "arrive": "+02:20", "depart": "+02:30" },
+        { "station": "ELA", "arrive": "+04:35", "depart": "+04:40" },
+        { "station": "BAD", "arrive": "+05:45" }
+      ]
+    }
+  ]
+}

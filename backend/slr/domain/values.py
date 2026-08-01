@@ -14,12 +14,9 @@ class BookingStatus(StrEnum):
     CONFIRMED = "CONFIRMED"
     CANCELLED = "CANCELLED"
     EXPIRED = "EXPIRED"
-    #: Unreserved overflow (D20). A live ticket with no seat. Occupies coach standing
-    #: capacity, so it stays outside ACTIVE_STATUSES.
+    #: Unreserved overflow (D20). A live, paid ticket with no seat. Occupies coach
+    #: standing capacity, so it stays outside ACTIVE_STATUSES.
     STANDING = "STANDING"
-    #: Unreserved booked in the app, awaiting counter payment (D21). Holds no seat until
-    #: the counter assigns one, so it too stays outside ACTIVE_STATUSES.
-    PENDING = "PENDING"
 
 
 class CoachType(StrEnum):
@@ -31,6 +28,14 @@ class TravelClass(StrEnum):
     FIRST = "FIRST"
     SECOND = "SECOND"
     THIRD = "THIRD"
+
+
+#: Presentation order for classes: best first, as a timetable lists them.
+CLASS_ORDER: tuple[TravelClass, ...] = (
+    TravelClass.FIRST,
+    TravelClass.SECOND,
+    TravelClass.THIRD,
+)
 
 
 #: Statuses that occupy a seat/leg, the scope of the overlap invariant (D2).

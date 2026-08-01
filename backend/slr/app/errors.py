@@ -14,6 +14,7 @@ from slr.domain.errors import (
     DomainError,
     IllegalTransition,
     InvalidLeg,
+    InvalidServiceDate,
     NoFeasibleSeat,
     OverlapError,
     PaymentDeclined,
@@ -32,6 +33,7 @@ _STATUS: dict[type[DomainError], int] = {
     BookingNotFound: 404,
     SeatNotBookable: 422,
     InvalidLeg: 422,
+    InvalidServiceDate: 422,
     DomainError: 400,
 }
 

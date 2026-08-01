@@ -1,28 +1,37 @@
-"""Read routes: search trips, per-leg availability, and the resale impact report."""
+"""Read routes: search the timetable, read a trip, per-leg availability, impact report."""
 
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
 
-from slr.app.deps import get_deps
-from slr.app.schemas import ImpactOut, LegAvailabilityOut, TripOut
+from slr.app.config import Settings
+from slr.app.deps import get_deps, get_settings
+from slr.app.schemas import ImpactOut, LegAvailabilityOut, TrainOptionOut, TripOut
 from slr.domain.stations import Leg
 from slr.usecases._deps import Deps
+from slr.usecases.get_trip import get_trip
 from slr.usecases.impact_report import impact_report
 from slr.usecases.leg_availability import leg_availability
-from slr.usecases.search_trips import search_trips
+from slr.usecases.search_trains import search_trains
 
 router = APIRouter(tags=["trips"])
 
 
-@router.get("/trips", response_model=list[TripOut])
-def list_trips(
-    route_code: str = Query(...),
-    service_date: str = Query(...),
+@router.get("/search", response_model=list[TrainOptionOut])
+def search(
+    origin: str = Query(..., min_length=1, max_length=16),
+    dest: str = Query(..., min_length=1, max_length=16),
+    date: str = Query(..., min_length=10, max_length=10),
     deps: Deps = Depends(get_deps),
-) -> list[TripOut]:
-    trips = search_trips(deps, route_code=route_code, service_date=service_date)
-    return [TripOut.of(t) for t in trips]
+    settings: Settings = Depends(get_settings),
+) -> list[TrainOptionOut]:
+    options = search_trains(deps, origin_code=origin, dest_code=dest, service_date=date)
+    return [TrainOptionOut.of(o, settings.currency) for o in options]
+
+
+@router.get("/trips/{trip_id}", response_model=TripOut)
+def read_trip(trip_id: str, deps: Deps = Depends(get_deps)) -> TripOut:
+    return TripOut.of(get_trip(deps, trip_id=trip_id))
 
 
 @router.get("/trips/{trip_id}/availability", response_model=LegAvailabilityOut)

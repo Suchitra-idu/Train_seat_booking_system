@@ -7,21 +7,13 @@ import threading
 import pytest
 from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
+from tests.integration.usecases._helpers import make_trip
 
-from slr.adapters.sqlalchemy_repo import SqlAlchemyUnitOfWork, insert_trip
+from slr.adapters.sqlalchemy_repo import SqlAlchemyUnitOfWork, upsert_trip
 from slr.domain.errors import OverlapError
-from slr.domain.stations import Leg, Station
-from slr.domain.values import BookingStatus, CoachType, TravelClass
-from slr.ports.repository import Hold, Seat, Trip
-
-
-def _trip():
-    stations = tuple(
-        Station(code=f"S{i}", name=f"Station {i}", seq=i, km=float(i * 10))
-        for i in range(6)
-    )
-    seats = (Seat("seat-1", "C1", CoachType.RESERVED, TravelClass.SECOND, 1),)
-    return Trip("trip-1", "CMB-BAD", "2026-08-01", stations, seats)
+from slr.domain.stations import Leg
+from slr.domain.values import BookingStatus, TravelClass
+from slr.ports.repository import Hold
 
 
 def _hold(booking_id, leg):
@@ -29,11 +21,13 @@ def _hold(booking_id, leg):
         booking_id=booking_id,
         reference=f"ref-{booking_id}",
         trip_id="trip-1",
-        seat_id="seat-1",
+        seat_id="R1",
         leg=leg,
         passenger_id=booking_id,
+        passenger_name=f"Passenger {booking_id}",
         travel_class=TravelClass.SECOND,
         status=BookingStatus.HELD,
+        fare_cents=10_000,
         held_until=1_000,
         created_at=0,
     )
@@ -41,9 +35,10 @@ def _hold(booking_id, leg):
 
 def _reset_and_seed(engine):
     with engine.begin() as conn:
-        conn.execute(text("TRUNCATE booking, waitlist, trip"))
+        conn.execute(text("TRUNCATE booking, trip"))
     seed = sessionmaker(bind=engine)()
-    insert_trip(seed, _trip())
+    upsert_trip(seed, make_trip(reserved=1, unreserved=0))
+    seed.commit()
     seed.close()
 
 

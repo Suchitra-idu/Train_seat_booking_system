@@ -9,7 +9,7 @@ from slr.domain.errors import (
     VelocityExceeded,
 )
 from slr.domain.stations import Leg
-from slr.domain.values import BookingStatus, TravelClass
+from slr.domain.values import BookingStatus
 from slr.usecases.hold_seat import hold_seat
 
 _LEG = Leg(0, 3)
@@ -22,7 +22,7 @@ def _hold(deps, seat_id="R1", leg=_LEG, passenger="p1", reference=None):
         seat_id=seat_id,
         leg=leg,
         passenger_id=passenger,
-        travel_class=TravelClass.SECOND,
+        passenger_name="Ann Perera",
         reference=reference,
     )
 

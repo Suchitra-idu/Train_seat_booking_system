@@ -24,7 +24,7 @@ def create_app(
 
     app = FastAPI(
         title="SLR Booking API",
-        version="0.5.0",
+        version="0.7.0",
         summary="Segment-based train seat booking (Colombo Fort to Badulla).",
     )
     app.state.container = container

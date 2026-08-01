@@ -1,6 +1,5 @@
 # Backend image. Build context is the repo root (pyproject/uv.lock live there).
-# P0: the app layer (L4) does not exist yet, so CMD is a placeholder health server;
-# it becomes `uvicorn slr.app.main:app` in P5.
+# `config/` carries the timetable the seed step expands into dated trips (D22).
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
@@ -18,6 +17,7 @@ COPY uv.lock* ./
 RUN uv sync --no-dev || uv sync
 
 COPY alembic.ini ./
+COPY config/ ./config/
 COPY backend/ ./backend/
 
 EXPOSE 8000

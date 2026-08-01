@@ -13,11 +13,11 @@ from slr.adapters.memory_notifier import MemoryNotifier
 from slr.adapters.memory_publisher import MemoryPublisher
 from slr.adapters.scripted_abuse import ScriptedAbuse
 from slr.adapters.seq_ids import SeqIdGen, SeqReferenceGen
-from slr.adapters.sqlalchemy_repo import SqlAlchemyUnitOfWork, insert_trip
+from slr.adapters.sqlalchemy_repo import SqlAlchemyUnitOfWork, upsert_trip
 from slr.domain.errors import OverlapError
 from slr.domain.fares import Money
 from slr.domain.stations import Leg
-from slr.domain.values import BookingStatus, TravelClass
+from slr.domain.values import BookingStatus
 from slr.usecases._deps import Deps
 from slr.usecases.confirm_booking import confirm_booking
 from slr.usecases.hold_seat import hold_seat
@@ -26,7 +26,8 @@ from slr.usecases.hold_seat import hold_seat
 @pytest.fixture
 def real_deps(pg_session_factory):
     seed = pg_session_factory()
-    insert_trip(seed, make_trip())
+    upsert_trip(seed, make_trip())
+    seed.commit()
     seed.close()
     uow = SqlAlchemyUnitOfWork(pg_session_factory)
     deps = Deps(
@@ -55,7 +56,7 @@ def _hold(deps, seat_id="R1", leg=_LEG, passenger="p1"):
         seat_id=seat_id,
         leg=leg,
         passenger_id=passenger,
-        travel_class=TravelClass.SECOND,
+        passenger_name="Ann Perera",
     )
 
 

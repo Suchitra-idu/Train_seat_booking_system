@@ -16,14 +16,8 @@ LEGAL = {
     (S.HELD, BookingEvent.CANCEL): S.CANCELLED,
     (S.HELD, BookingEvent.EXPIRE): S.EXPIRED,
     (S.CONFIRMED, BookingEvent.CANCEL): S.CANCELLED,
-    # Unreserved settles at the counter (D21). Paid with a seat gives CONFIRMED, paid
-    # with a full coach gives STANDING. Unpaid intent cancels or lapses.
-    (S.PENDING, BookingEvent.CONFIRM): S.CONFIRMED,
-    (S.PENDING, BookingEvent.STAND): S.STANDING,
-    (S.PENDING, BookingEvent.CANCEL): S.CANCELLED,
-    (S.PENDING, BookingEvent.EXPIRE): S.EXPIRED,
-    # A standing passenger takes a seat when one frees (D20).
-    (S.STANDING, BookingEvent.CONFIRM): S.CONFIRMED,
+    # A counter sale is created already paid (D23), CONFIRMED with a seat or STANDING
+    # without one, so neither has an unpaid state to leave. Both can still be cancelled.
     (S.STANDING, BookingEvent.CANCEL): S.CANCELLED,
 }
 
@@ -65,3 +59,10 @@ def test_cannot_confirm_after_expiry():
 def test_confirmed_booking_does_not_expire():
     with pytest.raises(IllegalTransition):
         apply(S.CONFIRMED, BookingEvent.EXPIRE)
+
+
+@pytest.mark.unit
+def test_a_paid_standing_ticket_is_never_re_confirmed():
+    """D20 prints a prediction, not a promise: nothing promotes a standing passenger."""
+    with pytest.raises(IllegalTransition):
+        apply(S.STANDING, BookingEvent.CONFIRM)

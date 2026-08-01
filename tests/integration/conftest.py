@@ -37,5 +37,5 @@ def postgres_engine():
 @pytest.fixture
 def pg_session_factory(postgres_engine):
     with postgres_engine.begin() as conn:
-        conn.execute(text("TRUNCATE booking, waitlist, trip"))
+        conn.execute(text("TRUNCATE booking, trip"))
     return sessionmaker(bind=postgres_engine)

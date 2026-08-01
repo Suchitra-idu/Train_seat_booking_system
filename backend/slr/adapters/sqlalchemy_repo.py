@@ -14,24 +14,18 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
-from slr.adapters.orm import (
-    BookingRow,
-    TripRow,
-    WaitlistRow,
-    leg_to_range,
-    range_to_leg,
-)
+from slr.adapters.orm import BookingRow, TripRow, leg_to_range, range_to_leg
 from slr.domain.errors import OverlapError
-from slr.domain.stations import Leg, Station
+from slr.domain.stations import Station
+from slr.domain.timetable import Stop, departure_min
 from slr.domain.values import ACTIVE_STATUSES, BookingStatus, CoachType, TravelClass
 from slr.ports.repository import (
     BookingRepository,
+    Coach,
     Hold,
     Seat,
     Trip,
     TripRepository,
-    WaitlistEntry,
-    WaitlistRepository,
 )
 
 _ACTIVE = [s.value for s in ACTIVE_STATUSES]
@@ -45,8 +39,10 @@ def _to_hold(row: BookingRow) -> Hold:
         seat_id=row.seat_id or "",
         leg=range_to_leg(row.leg),
         passenger_id=row.passenger_id,
+        passenger_name=row.passenger_name,
         travel_class=TravelClass(row.travel_class),
         status=BookingStatus(row.status),
+        fare_cents=row.fare_cents,
         held_until=row.held_until,
         created_at=row.created_at,
     )
@@ -60,37 +56,94 @@ def _to_row(hold: Hold) -> BookingRow:
         seat_id=hold.seat_id or None,
         leg=leg_to_range(hold.leg),
         passenger_id=hold.passenger_id,
+        passenger_name=hold.passenger_name,
         travel_class=hold.travel_class.value,
         status=hold.status.value,
+        fare_cents=hold.fare_cents,
         held_until=hold.held_until,
         created_at=hold.created_at,
     )
 
 
 def _to_trip(row: TripRow) -> Trip:
-    stations = tuple(Station(**s) for s in row.stations)
-    seats = tuple(
-        Seat(
-            seat_id=s["seat_id"],
-            coach=s["coach"],
-            coach_type=CoachType(s["coach_type"]),
-            travel_class=TravelClass(s["travel_class"]),
-            number=s["number"],
-        )
-        for s in row.seats
-    )
-    return Trip(row.trip_id, row.route_code, row.service_date, stations, seats)
-
-
-def _to_waitlist(row: WaitlistRow) -> WaitlistEntry:
-    return WaitlistEntry(
-        waitlist_id=row.waitlist_id,
+    return Trip(
         trip_id=row.trip_id,
-        leg=range_to_leg(row.leg),
-        passenger_id=row.passenger_id,
-        travel_class=TravelClass(row.travel_class),
-        created_at=row.created_at,
+        route_code=row.route_code,
+        service_date=row.service_date,
+        train_no=row.train_no,
+        train_name=row.train_name,
+        stations=tuple(Station(**s) for s in row.stations),
+        stops=tuple(Stop(**s) for s in row.stops),
+        coaches=tuple(
+            Coach(
+                code=c["code"],
+                coach_type=CoachType(c["coach_type"]),
+                travel_class=TravelClass(c["travel_class"]),
+                rows=c["rows"],
+                columns=c["columns"],
+                exit_rows=tuple(c["exit_rows"]),
+            )
+            for c in row.coaches
+        ),
+        seats=tuple(
+            Seat(
+                seat_id=s["seat_id"],
+                coach=s["coach"],
+                coach_type=CoachType(s["coach_type"]),
+                travel_class=TravelClass(s["travel_class"]),
+                number=s["number"],
+                row=s["row"],
+                column=s["column"],
+            )
+            for s in row.seats
+        ),
     )
+
+
+def _trip_values(trip: Trip) -> dict:
+    return {
+        "trip_id": trip.trip_id,
+        "route_code": trip.route_code,
+        "service_date": trip.service_date,
+        "train_no": trip.train_no,
+        "train_name": trip.train_name,
+        "departs_min": departure_min(trip.stops),
+        "stations": [
+            {"code": s.code, "name": s.name, "seq": s.seq, "km": s.km}
+            for s in trip.stations
+        ],
+        "stops": [
+            {
+                "station_seq": s.station_seq,
+                "arrive_min": s.arrive_min,
+                "depart_min": s.depart_min,
+            }
+            for s in trip.stops
+        ],
+        "coaches": [
+            {
+                "code": c.code,
+                "coach_type": c.coach_type.value,
+                "travel_class": c.travel_class.value,
+                "rows": c.rows,
+                "columns": c.columns,
+                "exit_rows": list(c.exit_rows),
+            }
+            for c in trip.coaches
+        ],
+        "seats": [
+            {
+                "seat_id": s.seat_id,
+                "coach": s.coach,
+                "coach_type": s.coach_type.value,
+                "travel_class": s.travel_class.value,
+                "number": s.number,
+                "row": s.row,
+                "column": s.column,
+            }
+            for s in trip.seats
+        ],
+    }
 
 
 def _is_overlap_violation(err: IntegrityError) -> bool:
@@ -108,9 +161,11 @@ class SqlAlchemyTripRepository:
             raise KeyError(trip_id)
         return _to_trip(row)
 
-    def find(self, route_code: str, service_date: str) -> list[Trip]:
-        stmt = select(TripRow).where(
-            TripRow.route_code == route_code, TripRow.service_date == service_date
+    def find_by_date(self, service_date: str) -> list[Trip]:
+        stmt = (
+            select(TripRow)
+            .where(TripRow.service_date == service_date)
+            .order_by(TripRow.departs_min, TripRow.trip_id)
         )
         return [_to_trip(r) for r in self._session.scalars(stmt)]
 
@@ -148,23 +203,6 @@ class SqlAlchemyBookingRepository:
             raise KeyError(booking_id)
         row.status = status.value
         self._session.flush()
-        return _to_hold(row)
-
-    def assign_seat(self, booking_id: str, seat_id: str) -> Hold:
-        row = self._session.get(BookingRow, booking_id)
-        if row is None:
-            raise KeyError(booking_id)
-        try:
-            with self._session.begin_nested():
-                row.seat_id = seat_id
-                self._session.flush()
-        except IntegrityError as err:
-            if _is_overlap_violation(err):
-                raise OverlapError(
-                    f"seat {seat_id} already held over {range_to_leg(row.leg)} "
-                    f"on trip {row.trip_id}"
-                ) from err
-            raise
         return _to_hold(row)
 
     def active_for_seat(self, trip_id: str, seat_id: str) -> list[Hold]:
@@ -208,56 +246,12 @@ class SqlAlchemyBookingRepository:
         return expired
 
 
-class SqlAlchemyWaitlistRepository:
-    def __init__(self, session: Session) -> None:
-        self._session = session
-
-    def add(self, entry: WaitlistEntry) -> None:
-        self._session.add(
-            WaitlistRow(
-                waitlist_id=entry.waitlist_id,
-                trip_id=entry.trip_id,
-                leg=leg_to_range(entry.leg),
-                passenger_id=entry.passenger_id,
-                travel_class=entry.travel_class.value,
-                created_at=entry.created_at,
-            )
-        )
-        self._session.flush()
-
-    def next_compatible(
-        self, trip_id: str, leg: Leg, travel_class: TravelClass
-    ) -> WaitlistEntry | None:
-        stmt = (
-            select(WaitlistRow)
-            .where(
-                WaitlistRow.trip_id == trip_id,
-                WaitlistRow.travel_class == travel_class.value,
-                WaitlistRow.leg.op("<@")(leg_to_range(leg)),
-            )
-            .order_by(WaitlistRow.created_at, WaitlistRow.waitlist_id)
-        )
-        row = self._session.scalars(stmt).first()
-        return _to_waitlist(row) if row is not None else None
-
-    def remove(self, waitlist_id: str) -> None:
-        row = self._session.get(WaitlistRow, waitlist_id)
-        if row is not None:
-            self._session.delete(row)
-            self._session.flush()
-
-    def for_trip(self, trip_id: str) -> list[WaitlistEntry]:
-        stmt = select(WaitlistRow).where(WaitlistRow.trip_id == trip_id)
-        return [_to_waitlist(r) for r in self._session.scalars(stmt)]
-
-
 class SqlAlchemyUnitOfWork:
     def __init__(self, session_factory: sessionmaker) -> None:
         self._session = session_factory()
         self._committed = False
         self.bookings: BookingRepository = SqlAlchemyBookingRepository(self._session)
         self.trips: TripRepository = SqlAlchemyTripRepository(self._session)
-        self.waitlist: WaitlistRepository = SqlAlchemyWaitlistRepository(self._session)
 
     def __enter__(self) -> SqlAlchemyUnitOfWork:
         self._committed = False
@@ -283,27 +277,14 @@ class SqlAlchemyUnitOfWork:
         self._session.close()
 
 
-def insert_trip(session: Session, trip: Trip) -> None:
-    """Seed a trip row (out of band, since TripRepository is read-only)."""
-    session.add(
-        TripRow(
-            trip_id=trip.trip_id,
-            route_code=trip.route_code,
-            service_date=trip.service_date,
-            stations=[
-                {"code": s.code, "name": s.name, "seq": s.seq, "km": s.km}
-                for s in trip.stations
-            ],
-            seats=[
-                {
-                    "seat_id": s.seat_id,
-                    "coach": s.coach,
-                    "coach_type": s.coach_type.value,
-                    "travel_class": s.travel_class.value,
-                    "number": s.number,
-                }
-                for s in trip.seats
-            ],
-        )
-    )
-    session.commit()
+def upsert_trip(session: Session, trip: Trip) -> bool:
+    """Seed one materialized trip (out of band, since TripRepository is read-only).
+
+    Returns True when the row was inserted. Re-seeding the same window is a no-op, which
+    is what makes `docker compose up` idempotent (D22).
+    """
+    if session.get(TripRow, trip.trip_id) is not None:
+        return False
+    session.add(TripRow(**_trip_values(trip)))
+    session.flush()
+    return True

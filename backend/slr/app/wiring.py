@@ -101,12 +101,13 @@ def wire_real(
 # Config the fake container serves so the use-cases' policy reads resolve (D11 keys).
 _FAKE_POLICY: dict[str, str] = {
     "hold_ttl_seconds": "900",
-    "pending_ttl_seconds": "3600",
     "max_seats_per_passenger": "4",
     "velocity_window_seconds": "600",
     "max_bookings_per_window": "3",
     "abuse_threshold": "0.8",
     "standing_capacity_per_coach": "2",
+    "booking_window_days": "30",
+    "utc_offset_minutes": "330",
     "class_mult_first": "2.0",
     "class_mult_second": "1.0",
     "class_mult_third": "0.7",

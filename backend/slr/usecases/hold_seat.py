@@ -1,15 +1,20 @@
-"""Reserved-coach hold: the passenger picks the seat (D6). Anti-tout gate, idempotent."""
+"""Reserved-coach hold: the passenger picks the seat (D6). Anti-tout gate, idempotent.
+
+The fare is fixed here, not at confirm time: the price the passenger is shown when the
+seat is held is the price charged when they pay, even though the demand multiplier (D4)
+moves as the coach fills.
+"""
 
 from __future__ import annotations
 
 from slr.domain.errors import SeatNotBookable
 from slr.domain.stations import Leg
-from slr.domain.values import BookingStatus, CoachType, TravelClass
+from slr.domain.values import BookingStatus, CoachType
 from slr.ports.availability import AvailabilityEvent
 from slr.ports.repository import Hold, Seat, Trip
 from slr.usecases._deps import Deps
 from slr.usecases._policy import enforce_anti_tout
-from slr.usecases._support import HOLD_TTL, validate_leg
+from slr.usecases._support import HOLD_TTL, price_leg, validate_leg
 
 
 def _reserved_seat(trip: Trip, seat_id: str) -> Seat:
@@ -26,7 +31,7 @@ def hold_seat(
     seat_id: str,
     leg: Leg,
     passenger_id: str,
-    travel_class: TravelClass,
+    passenger_name: str,
     reference: str | None = None,
 ) -> Hold:
     now = deps.clock.now()
@@ -40,7 +45,7 @@ def hold_seat(
         bookings.expire_due(now)
         trip = uow.trips.get(trip_id)
         validate_leg(trip, leg)
-        _reserved_seat(trip, seat_id)
+        seat = _reserved_seat(trip, seat_id)
         enforce_anti_tout(deps, trip_id, passenger_id, now)
 
         hold = Hold(
@@ -50,8 +55,10 @@ def hold_seat(
             seat_id=seat_id,
             leg=leg,
             passenger_id=passenger_id,
-            travel_class=travel_class,
+            passenger_name=passenger_name,
+            travel_class=seat.travel_class,
             status=BookingStatus.HELD,
+            fare_cents=price_leg(deps, uow, trip, leg, seat.travel_class).cents,
             held_until=now + deps.config.get_int(HOLD_TTL),
             created_at=now,
         )

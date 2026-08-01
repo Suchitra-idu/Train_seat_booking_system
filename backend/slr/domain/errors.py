@@ -11,6 +11,10 @@ class InvalidLeg(DomainError):
     """A leg that is empty, reversed, or off the station sequence."""
 
 
+class InvalidServiceDate(DomainError):
+    """A malformed date/time, or one outside the bookable window (D22). Maps to 422."""
+
+
 class IllegalTransition(DomainError):
     """A booking status change the state machine forbids."""
 

@@ -2,7 +2,6 @@ import pytest
 from tests.integration.usecases._helpers import build
 
 from slr.domain.stations import Leg
-from slr.domain.values import TravelClass
 from slr.usecases.hold_seat import hold_seat
 from slr.usecases.impact_report import impact_report
 
@@ -14,7 +13,7 @@ def _hold(deps, seat_id, leg):
         seat_id=seat_id,
         leg=leg,
         passenger_id="p1",
-        travel_class=TravelClass.SECOND,
+        passenger_name="Ann Perera",
     )
 
 

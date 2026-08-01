@@ -2,7 +2,7 @@
 
 How the system gets built. Each phase **builds one ring of the
 [architecture](ARCHITECTURE.md), test-first, owned by the test tier that ring is
-assigned to.** Decisions behind the choices are D1–D21 in [`PLAN.md`](PLAN.md).
+assigned to.** Decisions behind the choices are D1–D27 in [`PLAN.md`](PLAN.md).
 
 > **This is a living plan.** Nothing here is fixed. Decisions, phase boundaries,
 > and deliverables can be changed, reordered, or dropped the moment a better
@@ -29,7 +29,9 @@ assigned to.** Decisions behind the choices are D1–D21 in [`PLAN.md`](PLAN.md)
 5. **Assume a hostile, careless public, not a careful researcher.** This system
    is used by random everyday users, not by us. Every layer's tests must cover the
    dumb, the malformed, and the adversarial: legs that are empty / reversed / out
-   of order / off the route, negative or fractional passenger counts, double-clicks
+   of order / off the route, station pairs that are reversed or identical, dates in
+   the past or beyond the booking window or simply not a date, trains asked for on a
+   weekday they do not run, negative or fractional passenger counts, double-clicks
    and duplicate submits, holding an already-held or already-expired seat,
    confirming after expiry, cancelling twice, integer/money overflow, absurd
    quantities, unicode/oversized strings, missing or extra fields, and races where
@@ -46,11 +48,18 @@ assigned to.** Decisions behind the choices are D1–D21 in [`PLAN.md`](PLAN.md)
 | P3 | Backend **L2 real adapters** | **integration** (real Postgres) |
 | P4 | Backend **L3 use-cases** | **integration** (fakes + thin real) |
 | P5 | Backend **L4 composition root** | **contract** + thin **system** |
-| P6 | Frontend **L0→L4** (user app) | **unit** + **integration** + **contract** |
+| P6a | Frontend **L0→L4** (first cut) | **unit** + **integration** + **contract** |
+| P4b | Backend **L0+L3 revision** (timetable, waitlist out, counter sale, receipt) | **unit** + **integration** (fakes) |
+| P5b | Backend **L4 revision** (contract, routes, seeder) | **contract** + thin **system** |
+| P6c | Frontend **L0→L4** (traveller app, rebuilt) | **unit** + **integration** + **contract** |
 | P6b | Frontend **admin counter app** | **unit** + **integration** + **contract** |
 | P7 | Whole system | **system** (E2E) |
 | P8 | Seed & config realism | one-command bring-up |
 | P9 | Docs & polish | none |
+
+**P0–P6a, P4b and P5b are built.** The remaining order is **P6c → P6b → P7 → P8 →
+P9**; P4b/P5b landed first because P6c cannot be built against a contract that
+still has one hardcoded trip and no train identity.
 
 ---
 
@@ -131,12 +140,13 @@ infrastructure; a thin real pass covers `hold`/`confirm`.
 
 **Deliverables**, `search_trips`, `leg_availability`, `quote_fare`,
 `hold_seat` (reserved: validate leg → caps/velocity/abuse → requested seat →
-`add_hold` → idempotency), `book_unreserved` (NIC-only: caps/velocity/abuse →
-`PENDING` booking + code/QR, no seat yet), `settle_at_counter` (assign a seat via
-`packing` or standing via D20 → record payment → `PENDING → CONFIRMED`/`STANDING`
-→ invoice), `lookup_booking`, `confirm_booking` (reserved online payment →
-transition), `cancel_booking` (→ `promote_waitlist`), `join_waitlist`,
-`promote_waitlist` (FIFO among compatible, D16), `impact_report`.
+`add_hold` → idempotency), `book_unreserved`, `settle_at_counter`,
+`lookup_booking`, `confirm_booking` (reserved online payment → transition),
+`cancel_booking`, `join_waitlist`, `promote_waitlist`, `impact_report`.
+
+> **Revised by P4b.** The waitlist use-cases are withdrawn (D16), `search_trips`
+> becomes `search_trains(origin, dest, date)` (D22), and
+> `book_unreserved`+`settle_at_counter` collapse into one counter intent (D23).
 
 **Exit gate**, every use-case has a fake-based test (test-doctrine check);
 error paths (cap exceeded, overlap→409, payment declined, expired hold) covered;
@@ -158,12 +168,21 @@ exercises directly.**
 **Exit gate**, OpenAPI generated; contract tests assert routes emit the schema;
 app boots in compose behind a healthcheck; a thin API-level system test books a seat end-to-end.
 
+> **Revised by P5b.** Waitlist routes, `/unreserved` and the public
+> `GET /bookings/{reference}` are removed; trips gain train identity, times and
+> coach layouts; the admin router gains sell + verify.
+
 ---
 
-## P6: Frontend hexagon · tier: UNIT + INTEGRATION + CONTRACT
+## P6a: Frontend hexagon, first cut · tier: UNIT + INTEGRATION + CONTRACT
 
 Same layering, mirrored. Built inward-out: view-core → ports → fake client → real
 client → UI → shell.
+
+> **Replaced by P6c.** The hexagon (view-core → ports → adapters → ui → app) and
+> its contract seam survive; the screens are rebuilt around the landing page,
+> journey search, train list, coach switcher and receipt (D26). The waitlist and
+> unreserved modes come out (D16, D23).
 
 **Deliverables**
 - `view-core/` (unit): `legs`, `availability` (which seats are free for a leg), `seatmap` (layout model), `fares` (format), `booking` (hold-flow reducer). Vitest.
@@ -178,26 +197,197 @@ dependency-cruiser passes (no `fetch` outside `adapters/`).
 
 ---
 
-## P6b: Admin counter app · tier: UNIT + INTEGRATION + CONTRACT
+## P4b: Domain + use-case revision · tier: UNIT + INTEGRATION (fakes)
 
-The ticket-counter app. A second frontend hexagon over the same backend and contract.
-Seat assignment for unreserved happens here at payment time (D21).
+Four changes land together because they share one contract shape: the timetable
+becomes real, the waitlist goes, unreserved moves to the counter, and every paid
+booking produces a receipt. **Red before green still applies**, each item starts
+as a failing test in the tier that owns its layer.
 
 **Deliverables**
-- Backend (lands with P4/P5): `book_unreserved` issues a `PENDING` booking with a code/QR;
-  `lookup_booking(reference)` feeds the counter screen; `settle_at_counter` assigns a seat
-  (packing) or standing (D20), records the cash payment, transitions `PENDING →
-  CONFIRMED`/`STANDING`, and returns the invoice. Admin routes sit behind a shared counter
-  key.
-- `view-core/` (unit): `invoice` (format), `settle` (counter-flow reducer).
-- `ports/` + `adapters/`: reuse the generated `api-client` for the admin routes, fake first.
-- `ui/` (integration on the fake client): reference/QR entry, booking view, payment button,
-  printed invoice (reference, NIC, trip, leg, seat or standing prediction, fare).
+
+*Withdraw the waitlist (D16).* Delete `usecases/join_waitlist.py`,
+`usecases/promote_waitlist.py`, `usecases/_promote.py`, `WaitlistEntry` /
+`WaitlistRepository` / `UnitOfWork.waitlist` from `ports/repository.py`, the
+waitlist halves of `memory_repo.py` and `sqlalchemy_repo.py`, `WaitlistRow` from
+`orm.py`, and the `waitlist` table from the initial migration. `cancel_booking`
+loses its promotion step, `CancelResult.promoted` goes with it. Tests
+`test_join_waitlist.py` and `test_promote_waitlist.py` are deleted and the
+repository conformance suite drops its waitlist section. *Nothing is deprecated
+in place, a withdrawn decision leaves no dead code.*
+
+*Timetable (D22), `domain/timetable.py`, pure and unit-tested first:*
+`runs_on(days_of_week, service_date)` (weekday arithmetic over an ISO date, no
+clock), `serves(stops, origin_seq, dest_seq)` (both stops present, origin before
+destination), `leg_times(stops, leg)` → depart/arrive offsets and duration,
+`materialize(pattern, service_date)` → the `Trip` record. Property tests: a
+pattern appears on exactly the weekdays it declares; `serves` is false for
+reversed or off-route pairs; duration is monotone in leg length.
+
+*`search_trains(origin_code, dest_code, service_date)` (L3)*, replaces
+`search_trips`. Resolves the two station codes, asks the trip repo for that date,
+filters by `serves`, and returns per train: identity (number + name), depart and
+arrive time **for that leg**, duration, free seats per class over the leg, and a
+from-fare. Fake-adapter tests cover: a train that does not run that weekday is
+absent; a train that skips the origin is absent; a reversed pair returns empty; a
+date outside the booking window is a typed error, not an empty list.
+
+*`sell_unreserved` (L3, D23)*, one counter transaction: caps/velocity/abuse on
+the NIC → create the booking → `choose_seat` (packing) or standing under
+`standing_capacity` (D20) → charge cash → `CONFIRMED`/`STANDING` → receipt.
+Replaces `book_unreserved` + `settle_at_counter`. Tests: seat assigned when one
+fits; standing prediction when none does; `CoachFull` past capacity; a declined
+charge leaves **no** booking behind.
+
+*`verify_ticket(reference)` (L3, D21)*, read-only. Returns the booking with the
+passenger NIC, train, leg, coach/seat or standing, status, and a verdict
+(`VALID` / `NOT_FOUND` / `CANCELLED` / `EXPIRED` / `WRONG_DAY`). Never mutates.
+
+*`receipt` (D24)*, one assembly shared by `confirm_booking` and
+`sell_unreserved`: reference, passenger, train identity, date, leg with times,
+coach/seat or standing prediction, fare, issued-at, and the QR payload (the bare
+reference). Unit-tested as a pure builder over a booking + trip.
+
+*Seat geometry (D25)*, coach layouts (rows, columns, exit rows) flow from config
+onto the `Trip` record so the contract can carry them.
+
+**Exit gate**, every new domain module has a unit test and every use-case a
+fake-based test (the doctrine check enforces both); no `waitlist` symbol survives
+anywhere in `backend/` or `tests/`; `make check` green.
+
+---
+
+## P5b: Contract + routes revision · tier: CONTRACT + thin SYSTEM
+
+**Deliverables**
+- **Removed routes:** `POST /unreserved`, every `/waitlist*` route, and the
+  public `GET /bookings/{reference}` (D24, it leaks a passenger's NIC to anyone
+  who guesses a reference; the counter-key route stays).
+- **Changed schemas:** `TripOut` gains `train_no`, `train_name`, `stops[]`
+  (station seq + arrive/depart) and `coaches[]` (code, type, class, rows,
+  columns, exit rows). New `TrainSearchOut` (one row per train, with leg times,
+  duration, per-class free counts, from-fare) and `ReceiptOut`. `CancelOut` drops
+  `promoted`. `WaitlistOut`/`WaitlistRequest`/`PromoteRequest` deleted.
+- **New routes:** `GET /search?origin=&dest=&date=` → `TrainSearchOut[]`;
+  `POST /bookings/{id}/confirm` now returns `ReceiptOut`; admin
+  `POST /admin/unreserved/sell` → `ReceiptOut` and
+  `GET /admin/verify/{reference}` → `VerifyOut`, both behind the counter key.
+- **Seeder (D22):** service patterns + coach layouts in config; a compose step
+  expands them across `booking_window_days` into dated trips, idempotent on
+  `{pattern_code}:{date}`. This retires the `demo_data.py` / `seed_demo.py`
+  bridge from P6a.
+- OpenAPI regenerated to `contract/` and synced into `web/src/generated/`.
+
+**Exit gate**, contract tests assert every route emits its schema; a request to a
+removed route is a 404; `docker compose up` seeds a multi-train, multi-day
+timetable; a thin system test searches a date, books a seat and gets a receipt.
+
+---
+
+## P6c: Traveller app · tier: UNIT + INTEGRATION + CONTRACT
+
+The user-facing rebuild. Same hexagon, new screens. Built inward-out; every
+screen is driven by a pure model that is unit-tested before the component exists.
+
+**The flow** (one funnel, D26): **landing → search → trains → seats → passenger →
+receipt**, with `back` legal from every step.
+
+**The look** (D27): Rose Pine, **light mode only**, built out of Skeleton
+utilities. Two lines in `app.css` pin it before any screen is written:
+`:root { color-scheme: light }` after the Skeleton import, and a `dark` variant
+redefined to a selector the app never emits, so neither the visitor's OS setting
+nor a stray `dark:` utility can flip the palette. Reach for the Skeleton
+primitive first, every time:
+
+| Need | Skeleton primitive | Not this |
+|---|---|---|
+| Any panel, train row, receipt | `card` + `preset-tonal-*` / `preset-outlined-*` | a hand-rolled `rounded-xl border bg-…` stack |
+| Buttons, the Reserve CTA, coach tabs | `btn`, `btn-group`, `preset-filled-primary-500` | custom padding/radius per button |
+| Coach type, class, seat status pills | `badge`, `chip`, `badge-icon` | bespoke pill spans |
+| Date, From/To, NIC, name | `input`, `select`, `label`, `input-group` | raw `<input>` with ad-hoc classes |
+| Errors, "seat just taken", success | Skeleton alert/toast presets | the hand-rolled `Toast.svelte` from P6a |
+| Loading a train list or seat map | `placeholder animate-pulse` | a spinner div |
+| Hold countdown, seat-fill meter | `progress` | a manual bar |
+| Section rules, legend separators | `hr`, `divider` | margin hacks |
+| Icons | **lucide** via one `Icon` wrapper | hand-drawn SVG paths |
+
+A hand-written component is allowed only where Skeleton has no equivalent (the
+seat-map grid itself is the main one), and the reason goes in a comment above it.
+
+**Deliverables**
+- `view-core/` (unit): `flow.js` (the step reducer, including "seat taken → back
+  to seats"), `trains.js` (search-result rows: time, duration, free counts,
+  from-fare), `seatmap.js` **rewritten** to the layout model of D25 (rows of
+  `left block · row number · right block`, exit-row separators, per-leg status
+  per seat, coach list for the switcher), `receipt.js` (receipt view-model),
+  `qr.js` (pure reference → QR matrix/SVG string), `time.js` (HH:MM + duration
+  formatting).
+- `ports/` + `adapters/`: `ApiClient` gains `searchTrains`, `confirm` returns a
+  receipt, loses `unreserved` and `joinWaitlist`; **new `ReceiptExporter` port**
+  with a real adapter (`window.print` for PDF, canvas → PNG download) and a
+  recording fake, because printing is a browser capability and browser
+  capabilities live behind ports.
+- `ui/` (integration on the fake client):
+  - `Header` / `Footer` (lucide icons, replacing the hand-rolled `Icon` paths).
+  - `Landing`, short enough not to scroll: hero, one **Reserve** CTA, three
+    value props, footer.
+  - `JourneySearch`: Skeleton `input`/`select` for date and From/To, validated
+    against the station list (no reversed or identical pairs, no date outside
+    the window).
+  - `TrainList`: one Skeleton `card` per train, number + name, depart → arrive,
+    duration, class `chip`s, free-seat `badge`, from-fare, Select. Empty state is
+    a `placeholder` that names the reason ("no trains run this route on
+    Tuesdays") instead of showing nothing.
+  - `CoachSwitcher` + `SeatMap`: the reference layout, one coach at a time,
+    switched by a Skeleton `select` (or `btn-group` at two or three coaches);
+    unreserved coaches shown greyed and unselectable (D23); live grey-out over
+    SSE; click to select. The seat cells are the one deliberately hand-built
+    grid, seat status still expressed in `preset-*` classes so the theme owns
+    the colours.
+  - `PassengerForm` + fare summary + one **Reserve & pay** action (the hold stays
+    internal, D6), graceful **409** ("that seat was just taken") back to the map.
+  - `Receipt`: reference, QR, train, date, leg + times, coach/seat, fare, and
+    **Print / Download** through the exporter port.
+- `app/` shell: header, footer, providers, env wiring, real-adapter injection.
+
+**Exit gate**, every view-core module unit-tested (including the reducer's
+back/conflict paths and the seat-map grid against a 3-3 layout with exit rows);
+components tested on the fake `ApiClient`; the runtime schema-validation contract
+test still holds the seam; dependency-cruiser passes (no `fetch`, `EventSource`,
+`localStorage` or `window.print` outside `adapters/`); **a lint rule fails the
+build on any `dark:` utility or `prefers-color-scheme` query in `web/` or
+`admin/`** (D27), and the app renders identically with the OS set to dark.
+
+---
+
+## P6b: Admin counter app · tier: UNIT + INTEGRATION + CONTRACT
+
+The ticket-counter app. A second frontend hexagon over the same backend and contract,
+with two jobs (D21): **sell** unreserved tickets and **verify** any ticket at the gate.
+Unreserved exists only here (D23). It inherits P6c's look wholesale (D27): the same
+`app.css` with Rose Pine pinned to light, the same Skeleton-first table of primitives,
+the same lucide `Icon` wrapper. A counter screen under fluorescent light is the *last*
+place to introduce a second palette.
+
+**Deliverables** (backend lands in P4b/P5b)
+- `view-core/` (unit): `receipt` (shared with the traveller app's model), `sell` (the
+  counter-flow reducer), `verify` (verdict → what the inspector should see, including the
+  NIC to compare against the passenger's card).
+- `ports/` + `adapters/`: reuse the generated `api-client` for the admin routes, fake
+  first; the `ReceiptExporter` port for printing; a `Scanner` port for the QR camera with
+  a keyboard-entry fallback and a scripted fake.
+- `ui/` (integration on the fake client):
+  - **Sell:** passenger NIC + name, train and leg pickers, cash taken → receipt showing
+    the assigned seat *or* the standing prediction ("sit on seat 14 after Peradeniya"),
+    printed.
+  - **Verify:** scan a QR or type the reference → verdict banner (valid / not found /
+    cancelled / expired / wrong day) with passenger NIC, train, leg and seat.
 - `app/` admin shell, counter-key config.
 
 **Exit gate**, view-core unit-tested; components tested on the fake `ApiClient`; a contract
-test validates the admin responses against the OpenAPI schema; a settle flow turns a
-`PENDING` booking into a `CONFIRMED` seat or a `STANDING` prediction with an invoice.
+test validates the admin responses against the OpenAPI schema; a sell flow produces a
+receipt with a seat or a standing prediction, and verifying that receipt's reference
+returns `VALID` with the matching NIC.
 
 ---
 
@@ -206,10 +396,12 @@ test validates the admin responses against the OpenAPI schema; a settle flow tur
 Full stack via `docker compose`, driven black-box. Small set, high value,
 depth lives in P1–P6.
 
-**Deliverables** (Playwright), happy-path book; **segment resale** (A→B and B→C
-on the *same seat* both succeed, the signature journey); **two browsers race one
-seat** (one 409, handled gracefully); waitlist join → auto-promotion on cancel;
-hold expiry frees the seat.
+**Deliverables** (Playwright), landing → search a date → pick a train → pick a
+seat → pay → **receipt with a reference and a QR**; **segment resale** (A→B and
+B→C on the *same seat* both succeed, the signature journey); **two browsers race
+one seat** (one 409, handled gracefully); a train that does not run on the chosen
+weekday is absent from the results; hold expiry frees the seat; **counter sells
+an unreserved ticket and then verifies its reference** (the cross-app journey).
 
 **Exit gate**, all journeys green in the CI `e2e` profile;
 `make demo-resale` reproduces the resale journey headless.
@@ -221,19 +413,23 @@ hold expiry frees the seat.
 Prove **nothing is hardcoded** (D11) and the clean-machine story holds.
 
 **Deliverables**, config-driven seed of real Colombo Fort–Badulla stations + km,
-8 coaches (3 reserved / 5 unreserved) with classes, fare rates, caps, velocity
-limits, hold TTL. A test asserts coach/seat/station counts come from config
-(change config → counts change, no code edit).
+**several real service patterns** (train numbers and names, days-of-week, per-stop
+times, e.g. a daily express and a weekend-only service), coach layouts (rows,
+columns, exit rows) per pattern, 8 coaches (3 reserved / 5 unreserved) with
+classes, fare rates, caps, velocity limits, hold TTL, booking window. A test
+asserts coach/seat/station counts **and the set of trains on a given weekday**
+come from config (change config → results change, no code edit).
 
 **Exit gate**, on a clean machine, `cp .env.example .env && docker compose up`
-yields a usable, seeded app; the config-drives-counts test is green.
+yields a usable, seeded app with a real timetable; the config-drives-counts test
+is green.
 
 ---
 
 ## P9: Docs & polish
 
 **Deliverables**, `README.md`: core design decisions + alternatives rejected
-(from PLAN D1–D21), the sourced evidence + the transparent per-km derivation, the
+(from PLAN D1–D27), the sourced evidence + the transparent per-km derivation, the
 concurrency-proof walkthrough, extra-credit write-ups, and the run instructions.
 Architecture diagram; `make demo-*` scripts referenced. Repo made public.
 

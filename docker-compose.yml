@@ -33,8 +33,8 @@ services:
         condition: service_healthy
     command: ["uv", "run", "--no-dev", "alembic", "upgrade", "head"]
 
-  # Demo-trip seed so the stack is bookable end to end (P6a bridge). The full
-  # config-driven seed of real stations/coaches/fares lands in P8. Runs once, then exits.
+  # Expand config/timetable.json into dated trips across the booking window (D22).
+  # Idempotent on {pattern_code}:{date}, so a re-run only adds days that rolled in.
   seed:
     build:
       context: .
@@ -43,7 +43,7 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
-    command: ["uv", "run", "--no-dev", "python", "-m", "slr.app.seed_demo"]
+    command: ["uv", "run", "--no-dev", "python", "-m", "slr.app.seed"]
 
   api:
     build:

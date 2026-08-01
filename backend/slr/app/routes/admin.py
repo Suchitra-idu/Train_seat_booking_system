@@ -1,5 +1,8 @@
-"""Ticket-counter routes behind the shared counter key (D21): look a booking up by its
-reference/QR, then take payment and settle it into a seat or a standing prediction.
+"""Ticket-counter routes behind the shared counter key (D21): sell and verify.
+
+Sell is the only way an unreserved ticket comes into existence (D23). Verify is the only
+way to read a booking back from a reference, which is what keeps a guessed reference from
+leaking a passenger's NIC (D24).
 """
 
 from __future__ import annotations
@@ -8,26 +11,38 @@ from fastapi import APIRouter, Depends
 
 from slr.app.config import Settings
 from slr.app.deps import get_deps, get_settings, require_counter_key
-from slr.app.schemas import BookingOut, InvoiceOut, SettleRequest
+from slr.app.schemas import ReceiptOut, SellUnreservedRequest, VerifyOut
+from slr.domain.stations import Leg
 from slr.usecases._deps import Deps
-from slr.usecases.lookup_booking import lookup_booking
-from slr.usecases.settle_at_counter import settle_at_counter
+from slr.usecases.sell_unreserved import sell_unreserved
+from slr.usecases.verify_ticket import verify_ticket
 
 router = APIRouter(
     prefix="/admin", tags=["admin"], dependencies=[Depends(require_counter_key)]
 )
 
 
-@router.get("/bookings/{reference}", response_model=BookingOut)
-def admin_lookup(reference: str, deps: Deps = Depends(get_deps)) -> BookingOut:
-    return BookingOut.of(lookup_booking(deps, reference=reference))
-
-
-@router.post("/settle", response_model=InvoiceOut)
-def settle(
-    body: SettleRequest,
+@router.post("/unreserved/sell", response_model=ReceiptOut, status_code=201)
+def sell(
+    body: SellUnreservedRequest,
     deps: Deps = Depends(get_deps),
     settings: Settings = Depends(get_settings),
-) -> InvoiceOut:
-    invoice = settle_at_counter(deps, reference=body.reference)
-    return InvoiceOut.of(invoice, settings.currency)
+) -> ReceiptOut:
+    receipt = sell_unreserved(
+        deps,
+        trip_id=body.trip_id,
+        leg=Leg(body.origin_seq, body.dest_seq),
+        passenger_id=body.passenger_id,
+        passenger_name=body.passenger_name,
+        travel_class=body.travel_class,
+    )
+    return ReceiptOut.of(receipt, settings.currency)
+
+
+@router.get("/verify/{reference}", response_model=VerifyOut)
+def verify(
+    reference: str,
+    deps: Deps = Depends(get_deps),
+    settings: Settings = Depends(get_settings),
+) -> VerifyOut:
+    return VerifyOut.of(verify_ticket(deps, reference=reference), settings.currency)

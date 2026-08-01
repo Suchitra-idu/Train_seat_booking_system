@@ -2,8 +2,9 @@
 
 The overlap invariant is the partial GiST EXCLUDE on `booking`: no two active holds may
 share a trip and seat over overlapping legs. btree_gist supplies the `=` operators for
-trip_id and seat_id inside a gist index. Trip stations and seats ride as JSONB, since
-they are seeded config (D11) and never queried on their own.
+trip_id and seat_id inside a gist index. A trip's stations, stops, coaches and seats ride
+as JSONB, since they are materialized seed data (D11, D22) and are never queried on their
+own, only ever read whole with the trip.
 """
 
 from __future__ import annotations
@@ -27,7 +28,13 @@ class TripRow(Base):
     trip_id: Mapped[str] = mapped_column(String, primary_key=True)
     route_code: Mapped[str] = mapped_column(String, index=True)
     service_date: Mapped[str] = mapped_column(String, index=True)
+    train_no: Mapped[str] = mapped_column(String)
+    train_name: Mapped[str] = mapped_column(String)
+    #: Minutes from midnight of the service date; the sort key for a day's departures.
+    departs_min: Mapped[int] = mapped_column(Integer)
     stations: Mapped[list] = mapped_column(JSONB)
+    stops: Mapped[list] = mapped_column(JSONB)
+    coaches: Mapped[list] = mapped_column(JSONB)
     seats: Mapped[list] = mapped_column(JSONB)
 
 
@@ -40,8 +47,10 @@ class BookingRow(Base):
     seat_id: Mapped[str | None] = mapped_column(String, nullable=True)
     leg: Mapped[Range] = mapped_column(INT4RANGE)
     passenger_id: Mapped[str] = mapped_column(String, index=True)
+    passenger_name: Mapped[str] = mapped_column(String)
     travel_class: Mapped[str] = mapped_column(String)
     status: Mapped[str] = mapped_column(String, index=True)
+    fare_cents: Mapped[int] = mapped_column(Integer)
     held_until: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[int] = mapped_column(Integer)
 
@@ -55,17 +64,6 @@ class BookingRow(Base):
             name="booking_no_overlap",
         ),
     )
-
-
-class WaitlistRow(Base):
-    __tablename__ = "waitlist"
-
-    waitlist_id: Mapped[str] = mapped_column(String, primary_key=True)
-    trip_id: Mapped[str] = mapped_column(String, index=True)
-    leg: Mapped[Range] = mapped_column(INT4RANGE)
-    passenger_id: Mapped[str] = mapped_column(String)
-    travel_class: Mapped[str] = mapped_column(String)
-    created_at: Mapped[int] = mapped_column(Integer)
 
 
 def leg_to_range(leg: Leg) -> Range:

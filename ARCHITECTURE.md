@@ -3,7 +3,7 @@
 This tree implements **the Fullstack Hexagon**, the generic specification lives
 in [`FULLSTACK_ARCHITECTURE.md`](FULLSTACK_ARCHITECTURE.md). Read that for *why
 the shape*. This file is the map: where things go, and what stops them going
-anywhere else. The decisions (D1–D21) behind every deviation are in
+anywhere else. The decisions (D1–D27) behind every deviation are in
 [`PLAN.md`](PLAN.md); the build order and per-phase deliverables are in
 [`PHASES.md`](PHASES.md).
 
@@ -83,7 +83,7 @@ Every port is a Protocol in `slr/ports/` with **one conformance suite** and a
 
 | Port | Real adapter | Fake adapter |
 |---|---|---|
-| `UnitOfWork` + `BookingRepository`/`TripRepository`/`WaitlistRepository` | `sqlalchemy_repo.py` (Postgres) | `memory_repo.py` (replicates the invariant) |
+| `UnitOfWork` + `BookingRepository`/`TripRepository` | `sqlalchemy_repo.py` (Postgres) | `memory_repo.py` (replicates the invariant) |
 | `Clock` | `system_clock.py` | `fake_clock.py` (advanceable) |
 | `IdGen` / `ReferenceGen` | `uuid_ids.py` | `seq_ids.py` (deterministic) |
 | `PaymentGateway` | `mock_payment.py` | `fake_payment.py` (success + forced-decline) |
@@ -125,7 +125,8 @@ a registry"); we have two.
 
 **Frontend** mirrors this with `dependency-cruiser`: `ui → adapters` and
 `view-core → (svelte|fetch|EventSource)` are errors; a source rule bans `fetch`/
-`EventSource`/`localStorage` outside `adapters/`.
+`EventSource`/`localStorage`/`window.print` outside `adapters/`. Both frontend
+hexagons (traveller and counter) are checked by the same config.
 
 **`make guard`** proves the gate is alive: it plants `import sqlalchemy` in
 `slr/domain/_guard.py`, expects import-linter to reject it, and cleans up.
@@ -138,7 +139,7 @@ a registry"); we have two.
 <repo root>/
   FULLSTACK_ARCHITECTURE.md  generic spec (the why)
   ARCHITECTURE.md            this file (the map)
-  PLAN.md                    decisions D1–D21 + sourced evidence + run
+  PLAN.md                    decisions D1–D27 + sourced evidence + run
   PHASES.md                  build order + per-phase deliverables & gates
   docker-compose.yml         pg + migrate + seed + api + web (+ test / e2e profiles)
   Makefile                   check · lint · arch · test:{unit,int,e2e} · guard · demo-*
@@ -148,6 +149,7 @@ a registry"); we have two.
 
   backend/  (pkg `slr/`)
     domain/     stations.py (Station, Leg, overlap/adjacency, distance)
+                timetable.py (runs_on/serves/leg_times, pattern → dated trip, pure)
                 fares.py (Money, distance & dynamic fare, pure)
                 packing.py (interval-partition optimizer, best-seat, impact seat-km)
                 booking_sm.py (HOLD→CONFIRMED→CANCELLED/EXPIRED transitions)
@@ -161,22 +163,29 @@ a registry"); we have two.
                 log_notifier.py / memory_notifier.py · heuristic_abuse.py / scripted_abuse.py
                 distance_fare.py · dynamic_fare.py / fixed_fare.py
                 sse_publisher.py / memory_publisher.py · env_config.py / fixture_config.py
-    usecases/   search_trips.py · leg_availability.py · quote_fare.py · hold_seat.py
-                confirm_booking.py · cancel_booking.py · join_waitlist.py
-                promote_waitlist.py · impact_report.py
+    usecases/   search_trains.py · leg_availability.py · quote_fare.py · hold_seat.py
+                confirm_booking.py · cancel_booking.py · sell_unreserved.py
+                verify_ticket.py · receipt.py · impact_report.py
     app/        main.py · wiring.py · config.py · schemas.py (contract source)
-                routes/ (trips, availability, bookings, waitlist, sse)
+                routes/ (search, trips, availability, bookings, sse, admin)
                 middleware/idempotency.py · errors.py (domain→HTTP) · seed.py
                 migrations/ (Alembic; btree_gist + EXCLUDE)
 
-  frontend/ (`web/src/`)
-    view-core/  legs.js · availability.js · seatmap.js · fares.js · booking.js
-    ports/      api-client.js · availability-stream.js · storage.js · clock.js
+  frontend/ (`web/src/`)      the traveller app
+    view-core/  stations.js · availability.js · seatmap.js (grid model) · money.js
+                trains.js · flow.js (wizard reducer) · receipt.js · qr.js · time.js
+    ports/      api-client.js · availability-stream.js · storage.js · receipt-exporter.js
     adapters/   api-client.real.js / api-client.fake.js
                 availability-stream.real.js / .fake.js · storage.real.js / .fake.js
-    ui/         RoutePicker · DatePicker · SeatMap · SeatCell · HoldTimer   (.svelte)
-                ConfirmForm · WaitlistButton · stores (availability, hold)
-    app/        main.js · App.svelte · routes · stores · env
+                receipt-exporter.real.js / .fake.js
+    ui/         Header · Footer · Landing · JourneySearch · TrainList        (.svelte)
+                CoachSwitcher · SeatMap · PassengerForm · Receipt · Toast
+    app/        main.js · App.svelte · config.js · env
+
+  admin/  (`admin/src/`)      the counter app, same five layers
+    view-core/  receipt.js · sell.js · verify.js
+    ports/      api-client.js · receipt-exporter.js · scanner.js
+    ui/         SellTicket · VerifyTicket · ReceiptPrint
 
   tests/  (backend)
     unit/         mirrors domain/
@@ -194,6 +203,8 @@ a registry"); we have two.
 |---|---|---|
 | Extend the route / add a station | config + seed (station name, seq, km) | availability & fares recompute; no code |
 | Add a coach / change seats-per-coach | config (coach type, class, seat_count) | no code, D11 |
+| Add a train, or change the days it runs | config service pattern (number, name, days_of_week, stop times) → reseed | no code, D22 |
+| Change a coach's seating layout (3-3 → 2-2, exit rows) | config coach layout; `view-core/seatmap.js` already renders it | no component change, D25 |
 | Change a fare formula | `domain/fares.py` + its unit test | not the DB, not the API |
 | Add a fare strategy | new adapter of `FareStrategy` + conformance + config to select | core untouched |
 | Change hold TTL / seat caps / velocity limits | config data | never a rule |
@@ -203,6 +214,8 @@ a registry"); we have two.
 | Add an API endpoint | `app/schemas.py` (contract) → a `usecases/` intent → a route | domain untouched unless the rule is new |
 | Upgrade abuse detection to ML | new `AbuseScorer` adapter passing conformance | nothing in domain/usecases |
 | Change the seat map's look | `view-core/seatmap.js` model + `ui/SeatMap` | no `fetch` in components |
+| Restyle anything (colour, radius, spacing) | the Rose Pine theme tokens in `app.css`; components carry Skeleton `preset-*` classes only | never per-component colour literals, D27 |
+| Add a UI element | the Skeleton utility for it (`card`/`btn`/`badge`/`input`/`progress`/`placeholder`) | hand-rolled markup only where Skeleton has none, with a comment saying why |
 
 If a task makes you edit an inner layer to change something outer, or spread one
 change across three layers, **stop. You are fighting the architecture.** That

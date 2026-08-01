@@ -12,7 +12,21 @@ from types import TracebackType
 from typing import Protocol
 
 from slr.domain.stations import Leg, Station
+from slr.domain.timetable import Stop
 from slr.domain.values import BookingStatus, CoachType, TravelClass
+
+
+@dataclass(frozen=True, slots=True)
+class Coach:
+    """A coach's identity and seating geometry (D25). `columns` is the seats-per-side
+    pattern ("3-3"); `exit_rows` are rows the map draws a break after."""
+
+    code: str
+    coach_type: CoachType
+    travel_class: TravelClass
+    rows: int
+    columns: str
+    exit_rows: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,14 +36,23 @@ class Seat:
     coach_type: CoachType
     travel_class: TravelClass
     number: int
+    row: int
+    column: str
 
 
 @dataclass(frozen=True, slots=True)
 class Trip:
+    """One dated run of a service pattern (D22). Stations are the line's order; stops are
+    this train's calls on it, so a trip that skips a station simply has no stop for it."""
+
     trip_id: str
     route_code: str
     service_date: str
+    train_no: str
+    train_name: str
     stations: tuple[Station, ...]
+    stops: tuple[Stop, ...]
+    coaches: tuple[Coach, ...]
     seats: tuple[Seat, ...]
 
 
@@ -44,19 +67,11 @@ class Hold:
     seat_id: str
     leg: Leg
     passenger_id: str
+    passenger_name: str
     travel_class: TravelClass
     status: BookingStatus
+    fare_cents: int
     held_until: int
-    created_at: int
-
-
-@dataclass(frozen=True, slots=True)
-class WaitlistEntry:
-    waitlist_id: str
-    trip_id: str
-    leg: Leg
-    passenger_id: str
-    travel_class: TravelClass
     created_at: int
 
 
@@ -65,7 +80,8 @@ class TripRepository(Protocol):
         """Raises KeyError if no such trip."""
         ...
 
-    def find(self, route_code: str, service_date: str) -> list[Trip]:
+    def find_by_date(self, service_date: str) -> list[Trip]:
+        """Every materialized trip running on that date, in departure order."""
         ...
 
 
@@ -86,12 +102,6 @@ class BookingRepository(Protocol):
         """Transition an existing booking; returns the updated record."""
         ...
 
-    def assign_seat(self, booking_id: str, seat_id: str) -> Hold:
-        """Attach a seat to a seatless booking at counter settlement (D21). Returns the
-        updated record. Raises OverlapError if the seat is already actively held over the
-        booking's leg."""
-        ...
-
     def active_for_seat(self, trip_id: str, seat_id: str) -> list[Hold]:
         ...
 
@@ -103,8 +113,8 @@ class BookingRepository(Protocol):
         ...
 
     def by_status(self, trip_id: str, status: BookingStatus) -> list[Hold]:
-        """Every booking on the trip in one status. Counts PENDING/STANDING outside the
-        active-occupancy queries."""
+        """Every booking on the trip in one status. Counts STANDING tickets, which are
+        live but hold no seat, outside the active-occupancy queries."""
         ...
 
     def expire_due(self, now: int) -> list[Hold]:
@@ -112,27 +122,9 @@ class BookingRepository(Protocol):
         ...
 
 
-class WaitlistRepository(Protocol):
-    def add(self, entry: WaitlistEntry) -> None:
-        ...
-
-    def next_compatible(
-        self, trip_id: str, leg: Leg, travel_class: TravelClass
-    ) -> WaitlistEntry | None:
-        """FIFO among entries whose leg/class the freed segment can serve (D16)."""
-        ...
-
-    def remove(self, waitlist_id: str) -> None:
-        ...
-
-    def for_trip(self, trip_id: str) -> list[WaitlistEntry]:
-        ...
-
-
 class UnitOfWork(Protocol):
     bookings: BookingRepository
     trips: TripRepository
-    waitlist: WaitlistRepository
 
     def __enter__(self) -> UnitOfWork:
         ...
