@@ -68,6 +68,20 @@ class MemoryBookingRepository:
         self._store.holds[booking_id] = updated
         return updated
 
+    def assign_seat(self, booking_id: str, seat_id: str) -> Hold:
+        hold = self._store.holds[booking_id]
+        for existing in self.active_for_seat(hold.trip_id, seat_id):
+            if existing.booking_id == booking_id:
+                continue
+            if existing.leg.overlaps(hold.leg):
+                raise OverlapError(
+                    f"seat {seat_id} already held over {existing.leg} "
+                    f"on trip {hold.trip_id}"
+                )
+        updated = replace(hold, seat_id=seat_id)
+        self._store.holds[booking_id] = updated
+        return updated
+
     def active_for_seat(self, trip_id: str, seat_id: str) -> list[Hold]:
         return [
             h
@@ -91,6 +105,13 @@ class MemoryBookingRepository:
             h
             for h in self._store.holds.values()
             if h.trip_id == trip_id and h.status in ACTIVE_STATUSES
+        ]
+
+    def by_status(self, trip_id: str, status: BookingStatus) -> list[Hold]:
+        return [
+            h
+            for h in self._store.holds.values()
+            if h.trip_id == trip_id and h.status is status
         ]
 
     def expire_due(self, now: int) -> list[Hold]:

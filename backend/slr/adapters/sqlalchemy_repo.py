@@ -142,6 +142,23 @@ class SqlAlchemyBookingRepository:
         self._session.flush()
         return _to_hold(row)
 
+    def assign_seat(self, booking_id: str, seat_id: str) -> Hold:
+        row = self._session.get(BookingRow, booking_id)
+        if row is None:
+            raise KeyError(booking_id)
+        try:
+            with self._session.begin_nested():
+                row.seat_id = seat_id
+                self._session.flush()
+        except IntegrityError as err:
+            if _is_overlap_violation(err):
+                raise OverlapError(
+                    f"seat {seat_id} already held over {range_to_leg(row.leg)} "
+                    f"on trip {row.trip_id}"
+                ) from err
+            raise
+        return _to_hold(row)
+
     def active_for_seat(self, trip_id: str, seat_id: str) -> list[Hold]:
         stmt = select(BookingRow).where(
             BookingRow.trip_id == trip_id,
@@ -161,6 +178,12 @@ class SqlAlchemyBookingRepository:
     def active_holds(self, trip_id: str) -> list[Hold]:
         stmt = select(BookingRow).where(
             BookingRow.trip_id == trip_id, BookingRow.status.in_(_ACTIVE)
+        )
+        return [_to_hold(r) for r in self._session.scalars(stmt)]
+
+    def by_status(self, trip_id: str, status: BookingStatus) -> list[Hold]:
+        stmt = select(BookingRow).where(
+            BookingRow.trip_id == trip_id, BookingRow.status == status.value
         )
         return [_to_hold(r) for r in self._session.scalars(stmt)]
 

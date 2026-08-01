@@ -86,6 +86,12 @@ class BookingRepository(Protocol):
         """Transition an existing booking; returns the updated record."""
         ...
 
+    def assign_seat(self, booking_id: str, seat_id: str) -> Hold:
+        """Attach a seat to a seatless booking at counter settlement (D21). Returns the
+        updated record. Raises OverlapError if the seat is already actively held over the
+        booking's leg."""
+        ...
+
     def active_for_seat(self, trip_id: str, seat_id: str) -> list[Hold]:
         ...
 
@@ -94,6 +100,11 @@ class BookingRepository(Protocol):
 
     def active_holds(self, trip_id: str) -> list[Hold]:
         """Every HELD/CONFIRMED hold on the trip. The occupancy for availability."""
+        ...
+
+    def by_status(self, trip_id: str, status: BookingStatus) -> list[Hold]:
+        """Every booking on the trip in one status. Counts PENDING/STANDING outside the
+        active-occupancy queries."""
         ...
 
     def expire_due(self, now: int) -> list[Hold]:

@@ -163,6 +163,31 @@ def test_get_missing_booking_raises_keyerror(uow):
         uow.bookings.get("nope")
 
 
+# ── counter seat assignment (D21) ─────────────────────────────────────────────
+
+
+@pytest.mark.integration
+def test_assign_seat_attaches_a_seat_to_a_pending_booking(uow):
+    uow.bookings.add_hold(
+        make_hold("b1", seat_id="", status=BookingStatus.PENDING, held_until=9_999)
+    )
+    assigned = uow.bookings.assign_seat("b1", "seat-1")
+    assert assigned.seat_id == "seat-1"
+    assert uow.bookings.get("b1").seat_id == "seat-1"
+
+
+@pytest.mark.integration
+def test_by_status_counts_seatless_bookings(uow):
+    uow.bookings.add_hold(make_hold("b1", leg=Leg(0, 2)))  # HELD
+    uow.bookings.add_hold(
+        make_hold("b2", seat_id="", leg=Leg(0, 2), status=BookingStatus.PENDING)
+    )
+    assert [h.booking_id for h in uow.bookings.by_status("trip-1", BookingStatus.PENDING)] == [
+        "b2"
+    ]
+    assert uow.bookings.by_status("trip-1", BookingStatus.STANDING) == []
+
+
 # ── trips ─────────────────────────────────────────────────────────────────────
 
 
