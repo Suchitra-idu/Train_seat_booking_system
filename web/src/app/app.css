@@ -1,0 +1,19 @@
+@import "tailwindcss";
+@import "@skeletonlabs/skeleton";
+@import "@skeletonlabs/skeleton/themes/rosepine";
+
+/* Colour, spacing, and radius all come from the Rose Pine theme (data-theme on <html>).
+   Open Sans is the one thing the theme doesn't set. */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply antialiased;
+    font-family: "Open Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-primary-500);
+    outline-offset: 2px;
+  }
+}

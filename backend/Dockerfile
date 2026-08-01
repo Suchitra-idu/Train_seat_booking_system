@@ -17,9 +17,9 @@ COPY pyproject.toml ./
 COPY uv.lock* ./
 RUN uv sync --no-dev || uv sync
 
+COPY alembic.ini ./
 COPY backend/ ./backend/
 
 EXPOSE 8000
-# Placeholder until P5 wires FastAPI (which will run `uv run --no-dev uvicorn …`).
-# Plain system python needs no venv sync, so it serves 200 on / immediately.
-CMD ["python", "-m", "http.server", "8000"]
+# compose overrides this per service (migrate/seed/api); the default runs the API.
+CMD ["uv", "run", "--no-dev", "uvicorn", "slr.app.main:app", "--host", "0.0.0.0", "--port", "8000"]

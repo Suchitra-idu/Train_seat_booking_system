@@ -7,6 +7,7 @@ Container so the whole HTTP surface is exercised with zero infrastructure.
 from __future__ import annotations
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from slr.app.config import Settings, load_settings
 from slr.app.errors import register_error_handlers
@@ -28,7 +29,17 @@ def create_app(
     )
     app.state.container = container
     app.state.settings = settings
+    # Order matters: the last-added middleware is outermost. CORS must wrap the
+    # idempotency middleware, which rebuilds the response and would otherwise strip the
+    # Access-Control-Allow-Origin header off a POST reply.
     app.add_middleware(IdempotencyMiddleware)
+    if settings.cors_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=list(settings.cors_origins),
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
     register_error_handlers(app)
 
     @app.get("/", tags=["health"])

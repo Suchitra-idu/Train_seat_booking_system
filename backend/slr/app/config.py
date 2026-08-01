@@ -35,6 +35,7 @@ class Settings:
     currency: str
     fare_strategy: str
     fare_rate_per_km_cents: int
+    cors_origins: tuple[str, ...] = ()
     policy: dict[str, str] = field(default_factory=dict)
 
 
@@ -43,6 +44,7 @@ def load_settings() -> Settings:
         key: os.getenv(env_name, default)
         for key, (env_name, default) in _POLICY_DEFAULTS.items()
     }
+    origins = os.getenv("CORS_ALLOW_ORIGINS", "http://localhost:5173")
     return Settings(
         database_url=os.getenv(
             "DATABASE_URL", "postgresql+psycopg://slr:slr_local_dev@db:5432/slr"
@@ -51,6 +53,7 @@ def load_settings() -> Settings:
         currency=os.getenv("CURRENCY", "LKR"),
         fare_strategy=os.getenv("FARE_STRATEGY", "dynamic"),
         fare_rate_per_km_cents=int(os.getenv("FARE_RATE_PER_KM_CENTS", "685")),
+        cors_origins=tuple(o.strip() for o in origins.split(",") if o.strip()),
         policy=policy,
     )
 

@@ -22,9 +22,11 @@ module.exports = {
     },
     {
       name: "ui-never-imports-adapters",
-      comment: "L3 ui talks to ports, never a concrete adapter (use the fake in tests).",
+      comment:
+        "L3 ui talks to ports, never a concrete adapter. Integration tests are exempt — " +
+        "the doctrine tests components ON the fake adapter, so *.test.js may wire fakes.",
       severity: "error",
-      from: { path: "^src/ui/" },
+      from: { path: "^src/ui/", pathNot: ["\\.(test|spec)\\.js$"] },
       to: { path: "^src/(adapters|app)/" },
     },
     {

@@ -1,5 +1,5 @@
-// L4 composition root (placeholder). The real app shell — router, providers, and
-// real-adapter injection — lands in P6. For now it just proves the build/serve path.
+// L4 composition root: load global styles and mount the app shell.
+import "./app.css";
 import App from "./App.svelte";
 import { mount } from "svelte";
 

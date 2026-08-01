@@ -1,0 +1,1454 @@
+{
+  "components": {
+    "schemas": {
+      "BookingOut": {
+        "properties": {
+          "booking_id": {
+            "title": "Booking Id",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "integer"
+          },
+          "dest_seq": {
+            "title": "Dest Seq",
+            "type": "integer"
+          },
+          "held_until": {
+            "title": "Held Until",
+            "type": "integer"
+          },
+          "origin_seq": {
+            "title": "Origin Seq",
+            "type": "integer"
+          },
+          "passenger_id": {
+            "title": "Passenger Id",
+            "type": "string"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "seat_id": {
+            "title": "Seat Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BookingStatus"
+          },
+          "travel_class": {
+            "$ref": "#/components/schemas/TravelClass"
+          },
+          "trip_id": {
+            "title": "Trip Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "booking_id",
+          "reference",
+          "trip_id",
+          "seat_id",
+          "origin_seq",
+          "dest_seq",
+          "passenger_id",
+          "travel_class",
+          "status",
+          "held_until",
+          "created_at"
+        ],
+        "title": "BookingOut",
+        "type": "object"
+      },
+      "BookingStatus": {
+        "enum": [
+          "HELD",
+          "CONFIRMED",
+          "CANCELLED",
+          "EXPIRED",
+          "STANDING",
+          "PENDING"
+        ],
+        "title": "BookingStatus",
+        "type": "string"
+      },
+      "CancelOut": {
+        "properties": {
+          "cancelled": {
+            "$ref": "#/components/schemas/BookingOut"
+          },
+          "promoted": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BookingOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "cancelled"
+        ],
+        "title": "CancelOut",
+        "type": "object"
+      },
+      "CoachType": {
+        "enum": [
+          "RESERVED",
+          "UNRESERVED"
+        ],
+        "title": "CoachType",
+        "type": "string"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HoldRequest": {
+        "properties": {
+          "dest_seq": {
+            "minimum": 0.0,
+            "title": "Dest Seq",
+            "type": "integer"
+          },
+          "origin_seq": {
+            "minimum": 0.0,
+            "title": "Origin Seq",
+            "type": "integer"
+          },
+          "passenger_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Passenger Id",
+            "type": "string"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
+          },
+          "seat_id": {
+            "title": "Seat Id",
+            "type": "string"
+          },
+          "travel_class": {
+            "$ref": "#/components/schemas/TravelClass"
+          },
+          "trip_id": {
+            "title": "Trip Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trip_id",
+          "seat_id",
+          "origin_seq",
+          "dest_seq",
+          "passenger_id",
+          "travel_class"
+        ],
+        "title": "HoldRequest",
+        "type": "object"
+      },
+      "ImpactOut": {
+        "properties": {
+          "active_legs": {
+            "title": "Active Legs",
+            "type": "integer"
+          },
+          "seat_km_reclaimed": {
+            "title": "Seat Km Reclaimed",
+            "type": "number"
+          },
+          "seats_used": {
+            "title": "Seats Used",
+            "type": "integer"
+          },
+          "trip_id": {
+            "title": "Trip Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trip_id",
+          "active_legs",
+          "seats_used",
+          "seat_km_reclaimed"
+        ],
+        "title": "ImpactOut",
+        "type": "object"
+      },
+      "InvoiceOut": {
+        "properties": {
+          "dest_seq": {
+            "title": "Dest Seq",
+            "type": "integer"
+          },
+          "fare": {
+            "$ref": "#/components/schemas/MoneyOut"
+          },
+          "issued_at": {
+            "title": "Issued At",
+            "type": "integer"
+          },
+          "origin_seq": {
+            "title": "Origin Seq",
+            "type": "integer"
+          },
+          "passenger_id": {
+            "title": "Passenger Id",
+            "type": "string"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "seat_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seat Id"
+          },
+          "service_date": {
+            "title": "Service Date",
+            "type": "string"
+          },
+          "standing_after": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Standing After"
+          },
+          "standing_seat": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Standing Seat"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BookingStatus"
+          },
+          "trip_id": {
+            "title": "Trip Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reference",
+          "passenger_id",
+          "trip_id",
+          "service_date",
+          "origin_seq",
+          "dest_seq",
+          "fare",
+          "status",
+          "issued_at"
+        ],
+        "title": "InvoiceOut",
+        "type": "object"
+      },
+      "LegAvailabilityOut": {
+        "properties": {
+          "dest_seq": {
+            "title": "Dest Seq",
+            "type": "integer"
+          },
+          "free_count": {
+            "title": "Free Count",
+            "type": "integer"
+          },
+          "origin_seq": {
+            "title": "Origin Seq",
+            "type": "integer"
+          },
+          "seats": {
+            "items": {
+              "$ref": "#/components/schemas/SeatAvailabilityOut"
+            },
+            "title": "Seats",
+            "type": "array"
+          },
+          "trip_id": {
+            "title": "Trip Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trip_id",
+          "origin_seq",
+          "dest_seq",
+          "free_count",
+          "seats"
+        ],
+        "title": "LegAvailabilityOut",
+        "type": "object"
+      },
+      "MoneyOut": {
+        "properties": {
+          "cents": {
+            "title": "Cents",
+            "type": "integer"
+          },
+          "currency": {
+            "default": "LKR",
+            "title": "Currency",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cents"
+        ],
+        "title": "MoneyOut",
+        "type": "object"
+      },
+      "PromoteRequest": {
+        "properties": {
+          "dest_seq": {
+            "minimum": 0.0,
+            "title": "Dest Seq",
+            "type": "integer"
+          },
+          "origin_seq": {
+            "minimum": 0.0,
+            "title": "Origin Seq",
+            "type": "integer"
+          },
+          "seat_id": {
+            "title": "Seat Id",
+            "type": "string"
+          },
+          "travel_class": {
+            "$ref": "#/components/schemas/TravelClass"
+          },
+          "trip_id": {
+            "title": "Trip Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trip_id",
+          "origin_seq",
+          "dest_seq",
+          "seat_id",
+          "travel_class"
+        ],
+        "title": "PromoteRequest",
+        "type": "object"
+      },
+      "QuoteOut": {
+        "properties": {
+          "dest_seq": {
+            "title": "Dest Seq",
+            "type": "integer"
+          },
+          "fare": {
+            "$ref": "#/components/schemas/MoneyOut"
+          },
+          "origin_seq": {
+            "title": "Origin Seq",
+            "type": "integer"
+          },
+          "travel_class": {
+            "$ref": "#/components/schemas/TravelClass"
+          },
+          "trip_id": {
+            "title": "Trip Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trip_id",
+          "origin_seq",
+          "dest_seq",
+          "travel_class",
+          "fare"
+        ],
+        "title": "QuoteOut",
+        "type": "object"
+      },
+      "QuoteRequest": {
+        "properties": {
+          "dest_seq": {
+            "minimum": 0.0,
+            "title": "Dest Seq",
+            "type": "integer"
+          },
+          "origin_seq": {
+            "minimum": 0.0,
+            "title": "Origin Seq",
+            "type": "integer"
+          },
+          "travel_class": {
+            "$ref": "#/components/schemas/TravelClass"
+          },
+          "trip_id": {
+            "title": "Trip Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trip_id",
+          "origin_seq",
+          "dest_seq",
+          "travel_class"
+        ],
+        "title": "QuoteRequest",
+        "type": "object"
+      },
+      "SeatAvailabilityOut": {
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "coach": {
+            "title": "Coach",
+            "type": "string"
+          },
+          "seat_id": {
+            "title": "Seat Id",
+            "type": "string"
+          },
+          "travel_class": {
+            "$ref": "#/components/schemas/TravelClass"
+          }
+        },
+        "required": [
+          "seat_id",
+          "coach",
+          "travel_class",
+          "available"
+        ],
+        "title": "SeatAvailabilityOut",
+        "type": "object"
+      },
+      "SeatOut": {
+        "properties": {
+          "coach": {
+            "title": "Coach",
+            "type": "string"
+          },
+          "coach_type": {
+            "$ref": "#/components/schemas/CoachType"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "seat_id": {
+            "title": "Seat Id",
+            "type": "string"
+          },
+          "travel_class": {
+            "$ref": "#/components/schemas/TravelClass"
+          }
+        },
+        "required": [
+          "seat_id",
+          "coach",
+          "coach_type",
+          "travel_class",
+          "number"
+        ],
+        "title": "SeatOut",
+        "type": "object"
+      },
+      "SettleRequest": {
+        "properties": {
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reference"
+        ],
+        "title": "SettleRequest",
+        "type": "object"
+      },
+      "StationOut": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "km": {
+            "title": "Km",
+            "type": "number"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "seq",
+          "km"
+        ],
+        "title": "StationOut",
+        "type": "object"
+      },
+      "TravelClass": {
+        "enum": [
+          "FIRST",
+          "SECOND",
+          "THIRD"
+        ],
+        "title": "TravelClass",
+        "type": "string"
+      },
+      "TripOut": {
+        "properties": {
+          "route_code": {
+            "title": "Route Code",
+            "type": "string"
+          },
+          "seats": {
+            "items": {
+              "$ref": "#/components/schemas/SeatOut"
+            },
+            "title": "Seats",
+            "type": "array"
+          },
+          "service_date": {
+            "title": "Service Date",
+            "type": "string"
+          },
+          "stations": {
+            "items": {
+              "$ref": "#/components/schemas/StationOut"
+            },
+            "title": "Stations",
+            "type": "array"
+          },
+          "trip_id": {
+            "title": "Trip Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trip_id",
+          "route_code",
+          "service_date",
+          "stations",
+          "seats"
+        ],
+        "title": "TripOut",
+        "type": "object"
+      },
+      "UnreservedRequest": {
+        "properties": {
+          "dest_seq": {
+            "minimum": 0.0,
+            "title": "Dest Seq",
+            "type": "integer"
+          },
+          "origin_seq": {
+            "minimum": 0.0,
+            "title": "Origin Seq",
+            "type": "integer"
+          },
+          "passenger_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Passenger Id",
+            "type": "string"
+          },
+          "travel_class": {
+            "$ref": "#/components/schemas/TravelClass"
+          },
+          "trip_id": {
+            "title": "Trip Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trip_id",
+          "origin_seq",
+          "dest_seq",
+          "passenger_id",
+          "travel_class"
+        ],
+        "title": "UnreservedRequest",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "WaitlistOut": {
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "integer"
+          },
+          "dest_seq": {
+            "title": "Dest Seq",
+            "type": "integer"
+          },
+          "origin_seq": {
+            "title": "Origin Seq",
+            "type": "integer"
+          },
+          "passenger_id": {
+            "title": "Passenger Id",
+            "type": "string"
+          },
+          "travel_class": {
+            "$ref": "#/components/schemas/TravelClass"
+          },
+          "trip_id": {
+            "title": "Trip Id",
+            "type": "string"
+          },
+          "waitlist_id": {
+            "title": "Waitlist Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "waitlist_id",
+          "trip_id",
+          "origin_seq",
+          "dest_seq",
+          "passenger_id",
+          "travel_class",
+          "created_at"
+        ],
+        "title": "WaitlistOut",
+        "type": "object"
+      },
+      "WaitlistRequest": {
+        "properties": {
+          "dest_seq": {
+            "minimum": 0.0,
+            "title": "Dest Seq",
+            "type": "integer"
+          },
+          "origin_seq": {
+            "minimum": 0.0,
+            "title": "Origin Seq",
+            "type": "integer"
+          },
+          "passenger_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Passenger Id",
+            "type": "string"
+          },
+          "travel_class": {
+            "$ref": "#/components/schemas/TravelClass"
+          },
+          "trip_id": {
+            "title": "Trip Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trip_id",
+          "origin_seq",
+          "dest_seq",
+          "passenger_id",
+          "travel_class"
+        ],
+        "title": "WaitlistRequest",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "summary": "Segment-based train seat booking (Colombo Fort to Badulla).",
+    "title": "SLR Booking API",
+    "version": "0.5.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "health__get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Health  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/admin/bookings/{reference}": {
+      "get": {
+        "operationId": "admin_lookup_admin_bookings__reference__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reference",
+            "required": true,
+            "schema": {
+              "title": "Reference",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-counter-key",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Counter-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Lookup",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/admin/settle": {
+      "post": {
+        "operationId": "settle_admin_settle_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-counter-key",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Counter-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Settle",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/bookings/hold": {
+      "post": {
+        "operationId": "hold_bookings_hold_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HoldRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Hold",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/bookings/{booking_id}/cancel": {
+      "post": {
+        "operationId": "cancel_bookings__booking_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "booking_id",
+            "required": true,
+            "schema": {
+              "title": "Booking Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/bookings/{booking_id}/confirm": {
+      "post": {
+        "operationId": "confirm_bookings__booking_id__confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "booking_id",
+            "required": true,
+            "schema": {
+              "title": "Booking Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/bookings/{reference}": {
+      "get": {
+        "operationId": "lookup_bookings__reference__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reference",
+            "required": true,
+            "schema": {
+              "title": "Reference",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Lookup",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Health Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/quote": {
+      "post": {
+        "operationId": "quote_quote_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuoteOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Quote",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/trips": {
+      "get": {
+        "operationId": "list_trips_trips_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "route_code",
+            "required": true,
+            "schema": {
+              "title": "Route Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "service_date",
+            "required": true,
+            "schema": {
+              "title": "Service Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TripOut"
+                  },
+                  "title": "Response List Trips Trips Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Trips",
+        "tags": [
+          "trips"
+        ]
+      }
+    },
+    "/trips/{trip_id}/availability": {
+      "get": {
+        "operationId": "trip_availability_trips__trip_id__availability_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "origin_seq",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "title": "Origin Seq",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dest_seq",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "title": "Dest Seq",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegAvailabilityOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Trip Availability",
+        "tags": [
+          "trips"
+        ]
+      }
+    },
+    "/trips/{trip_id}/impact": {
+      "get": {
+        "operationId": "trip_impact_trips__trip_id__impact_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImpactOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Trip Impact",
+        "tags": [
+          "trips"
+        ]
+      }
+    },
+    "/trips/{trip_id}/stream": {
+      "get": {
+        "description": "`limit` caps the number of frames then closes the stream; omit it for a live feed.\nIt exists so a client (and the contract test) can take a bounded read.",
+        "operationId": "trip_stream_trips__trip_id__stream_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Trip Stream",
+        "tags": [
+          "stream"
+        ]
+      }
+    },
+    "/unreserved": {
+      "post": {
+        "operationId": "unreserved_unreserved_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnreservedRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unreserved",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/waitlist": {
+      "post": {
+        "operationId": "join_waitlist_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WaitlistRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WaitlistOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Join",
+        "tags": [
+          "waitlist"
+        ]
+      }
+    },
+    "/waitlist/promote": {
+      "post": {
+        "operationId": "promote_waitlist_promote_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromoteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/BookingOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Promote Waitlist Promote Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Promote",
+        "tags": [
+          "waitlist"
+        ]
+      }
+    }
+  }
+}

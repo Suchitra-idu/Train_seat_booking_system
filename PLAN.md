@@ -269,3 +269,6 @@ scarcity, and revenue are downstream wins**, quantified, not asserted.
 
 **[D] Derived**, the ~45% per-km overpricing and the 171 km / 59% resellable-seat-km figures are computed transparently from [F] fares and [O] route distances; the derivation is shown in the README so a reviewer can check the arithmetic.
 ```
+
+
+

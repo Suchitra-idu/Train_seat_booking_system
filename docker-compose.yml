@@ -22,7 +22,7 @@ services:
       timeout: 3s
       retries: 20
 
-  # Alembic (btree_gist + EXCLUDE constraint) lands in P3. Runs once, then exits.
+  # Alembic (btree_gist + EXCLUDE constraint). Runs once, then exits.
   migrate:
     build:
       context: .
@@ -31,9 +31,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: ["python", "-c", "print('migrate: no migrations yet (P3)')"]
+    command: ["uv", "run", "--no-dev", "alembic", "upgrade", "head"]
 
-  # Config-driven seed of stations/coaches/fares lands in P8. Runs once, then exits.
+  # Demo-trip seed so the stack is bookable end to end (P6a bridge). The full
+  # config-driven seed of real stations/coaches/fares lands in P8. Runs once, then exits.
   seed:
     build:
       context: .
@@ -42,14 +43,14 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
-    command: ["python", "-c", "print('seed: config-driven seed lands in P8')"]
+    command: ["uv", "run", "--no-dev", "python", "-m", "slr.app.seed_demo"]
 
   api:
     build:
       context: .
       dockerfile: backend/Dockerfile
     env_file: .env
-    command: ["uvicorn", "slr.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    command: ["uv", "run", "--no-dev", "uvicorn", "slr.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
     ports:
       - "${API_PORT}:8000"
     depends_on:
