@@ -3,11 +3,13 @@ name = "slr-booking"
 version = "0.0.0"
 description = "Segment-based train seat booking system (Colombo Fort–Badulla)"
 requires-python = ">=3.12"
-# FastAPI lands in P5. P3 adds the persistence stack for the real repository adapter.
+# P5 adds FastAPI (L4 composition root). P3 added the persistence stack for the real repo.
 dependencies = [
     "sqlalchemy>=2.0",
     "alembic>=1.13",
     "psycopg[binary]>=3.1",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
 ]
 
 [dependency-groups]
@@ -19,6 +21,7 @@ dev = [
     "mypy>=1.11",
     "import-linter>=2.0",
     "testcontainers[postgres]>=4.0",
+    "httpx>=0.27",
 ]
 
 # uv manages a venv but does not try to build/install `slr` — the package is put on
@@ -34,6 +37,10 @@ src = ["backend", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+# FastAPI's DI markers are called in argument defaults by design; that is not the B008 bug.
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Header"]
 
 # ─── mypy ────────────────────────────────────────────────────────────────
 [tool.mypy]

@@ -14,7 +14,14 @@ from types import TracebackType
 from slr.domain.errors import OverlapError
 from slr.domain.stations import Leg
 from slr.domain.values import ACTIVE_STATUSES, BookingStatus, TravelClass
-from slr.ports.repository import Hold, Trip, WaitlistEntry
+from slr.ports.repository import (
+    BookingRepository,
+    Hold,
+    Trip,
+    TripRepository,
+    WaitlistEntry,
+    WaitlistRepository,
+)
 
 
 class _Store:
@@ -162,9 +169,9 @@ class MemoryUnitOfWork:
         self._store = store or _Store()
         for trip in trips:
             self._store.trips[trip.trip_id] = trip
-        self.bookings = MemoryBookingRepository(self._store)
-        self.trips = MemoryTripRepository(self._store)
-        self.waitlist = MemoryWaitlistRepository(self._store)
+        self.bookings: BookingRepository = MemoryBookingRepository(self._store)
+        self.trips: TripRepository = MemoryTripRepository(self._store)
+        self.waitlist: WaitlistRepository = MemoryWaitlistRepository(self._store)
         self._snapshot: (
             tuple[dict[str, Hold], dict[str, Trip], dict[str, WaitlistEntry]] | None
         ) = None

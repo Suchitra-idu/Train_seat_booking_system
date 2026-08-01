@@ -9,7 +9,7 @@ WEB := npm --prefix web
 export PYTHONPATH := $(CURDIR)/backend
 
 .PHONY: help install check lint arch typecheck test-unit test-int test-e2e \
-        guard demo-concurrency demo-resale fmt clean
+        guard emit-openapi serve dev demo-concurrency demo-resale fmt clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -54,6 +54,15 @@ guard: ## Plant a banned import in the pure core; import-linter MUST reject it
 	  rm -f backend/slr/domain/_guard.py; \
 	  echo "✓ gate alive: banned import rejected, cleaned up"; \
 	fi
+
+emit-openapi: ## Regenerate contract/openapi.json from the live FastAPI app (D13)
+	$(UV) python scripts/emit_openapi.py
+
+serve: ## Run the API locally (needs a reachable Postgres from DATABASE_URL)
+	$(UV) uvicorn slr.app.main:app --host 0.0.0.0 --port 8000 --reload
+
+dev: ## Zero-infra playground: API on the in-memory fake, seeded with a demo trip
+	$(UV) python scripts/dev_server.py
 
 demo-concurrency: ## Fire N holds at one seat/leg → "1 booked, N−1 got 409"
 	$(UV) python scripts/demo_concurrency.py

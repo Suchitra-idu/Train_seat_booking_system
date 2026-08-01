@@ -24,7 +24,15 @@ from slr.adapters.orm import (
 from slr.domain.errors import OverlapError
 from slr.domain.stations import Leg, Station
 from slr.domain.values import ACTIVE_STATUSES, BookingStatus, CoachType, TravelClass
-from slr.ports.repository import Hold, Seat, Trip, WaitlistEntry
+from slr.ports.repository import (
+    BookingRepository,
+    Hold,
+    Seat,
+    Trip,
+    TripRepository,
+    WaitlistEntry,
+    WaitlistRepository,
+)
 
 _ACTIVE = [s.value for s in ACTIVE_STATUSES]
 
@@ -247,9 +255,9 @@ class SqlAlchemyUnitOfWork:
     def __init__(self, session_factory: sessionmaker) -> None:
         self._session = session_factory()
         self._committed = False
-        self.bookings = SqlAlchemyBookingRepository(self._session)
-        self.trips = SqlAlchemyTripRepository(self._session)
-        self.waitlist = SqlAlchemyWaitlistRepository(self._session)
+        self.bookings: BookingRepository = SqlAlchemyBookingRepository(self._session)
+        self.trips: TripRepository = SqlAlchemyTripRepository(self._session)
+        self.waitlist: WaitlistRepository = SqlAlchemyWaitlistRepository(self._session)
 
     def __enter__(self) -> SqlAlchemyUnitOfWork:
         self._committed = False
