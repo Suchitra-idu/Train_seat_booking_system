@@ -116,7 +116,7 @@
         <div class="grid gap-4 sm:grid-cols-2">
           <label class="label">
             <span class="label-text">Passenger name</span>
-            <input type="text" class="input" bind:value={passengerName} placeholder="As printed on the NIC / passport" />
+            <input type="text" class="input" bind:value={passengerName} placeholder="Name" />
           </label>
           <label class="label">
             <span class="label-text">NIC / passport</span>

@@ -47,7 +47,7 @@
         class="input"
         value={passenger.name}
         oninput={update("name")}
-        placeholder="As printed on the NIC / passport"
+        placeholder="Name"
       />
     </label>
     <label class="label">
@@ -67,7 +67,7 @@
   {#if parentSeatId !== null}
     <label class="flex items-center gap-2 text-sm">
       <input type="checkbox" class="checkbox" checked={isChild} onchange={toggleChild} {disabled} />
-      <span>Travelling with {parentName || "the passenger above"}</span>
+      <span>Child, Travelling with {parentName || "the passenger above"}</span>
     </label>
   {/if}
 </div>
