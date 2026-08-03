@@ -57,9 +57,9 @@ assigned to.** Decisions behind the choices are D1–D27 in [`PLAN.md`](PLAN.md)
 | P8 | Seed & config realism | one-command bring-up |
 | P9 | Docs & polish | none |
 
-**P0–P6a, P4b and P5b are built.** The remaining order is **P6c → P6b → P7 → P8 →
-P9**; P4b/P5b landed first because P6c cannot be built against a contract that
-still has one hardcoded trip and no train identity.
+**P0–P6a, P4b, P5b, P6c, P7 and P8 are built.** The remaining order is **P6b → P9**;
+P6b (admin counter app) was pushed after P7/P8 since it's the one piece not on the
+traveller's critical path, and P9 (docs/polish) is out of scope for now.
 
 ---
 
@@ -393,18 +393,28 @@ returns `VALID` with the matching NIC.
 
 ## P7: System / E2E · tier: SYSTEM
 
-Full stack via `docker compose`, driven black-box. Small set, high value,
-depth lives in P1–P6.
+> **Revised.** No Playwright, no browser E2E suite, that scope was cut in favour of
+> proving the same guarantees at the use-case/repository level against a real
+> Postgres, which is what actually carries the correctness risk. The golden path
+> (search → pick a train → pick a seat → pay → receipt with a QR) is already
+> exercised end to end in P5b's contract/system tests and by hand via
+> `docker compose up`.
 
-**Deliverables** (Playwright), landing → search a date → pick a train → pick a
-seat → pay → **receipt with a reference and a QR**; **segment resale** (A→B and
-B→C on the *same seat* both succeed, the signature journey); **two browsers race
-one seat** (one 409, handled gracefully); a train that does not run on the chosen
-weekday is absent from the results; hold expiry frees the seat; **counter sells
-an unreserved ticket and then verifies its reference** (the cross-app journey).
+**Deliverables**, all against a real Postgres (Testcontainers), not a fake:
+**segment resale** (A→B and B→C on the *same seat* both succeed, the signature
+journey — `test_segment_resale_adjacent_legs_on_the_same_seat_both_confirm` in
+`test_real_pass.py`, reproduced headless by `make demo-resale`); **N browsers race
+one seat** (one wins, N−1 get `OverlapError`/409 — `make demo-concurrency` and
+`tests/integration/concurrency/`); a train that does not run on the chosen weekday
+is absent from search results (`test_search_trains.py`); hold expiry frees the seat
+(`test_repository.py`); **counter sells an unreserved ticket and then verifies its
+reference** (the cross-app journey —
+`test_a_counter_sale_verifies_the_same_way_as_an_app_booking` in
+`test_verify_ticket.py`).
 
-**Exit gate**, all journeys green in the CI `e2e` profile;
-`make demo-resale` reproduces the resale journey headless.
+**Exit gate**, `make check` is green (all of the above run in its integration
+tier); `make demo-resale` and `make demo-concurrency` each print their proof
+headless against a throwaway Postgres.
 
 ---
 
@@ -412,12 +422,13 @@ an unreserved ticket and then verifies its reference** (the cross-app journey).
 
 Prove **nothing is hardcoded** (D11) and the clean-machine story holds.
 
-**Deliverables**, config-driven seed of real Colombo Fort–Badulla stations + km,
-**several real service patterns** (train numbers and names, days-of-week, per-stop
-times, e.g. a daily express and a weekend-only service), coach layouts (rows,
-columns, exit rows) per pattern, 8 coaches (3 reserved / 5 unreserved) with
-classes, fare rates, caps, velocity limits, hold TTL, booking window. A test
-asserts coach/seat/station counts **and the set of trains on a given weekday**
+**Delivered**, `config/timetable.json`: the real 11-station Colombo Fort–Badulla
+route with km, three real service patterns (1005 Podi Menike and 1015 Udarata
+Menike daily, 1045 Denuwara Menike Fri/Sat/Sun overnight), five coach layouts
+(rows, columns, exit rows, reserved and unreserved, first/second/third class)
+assembled per pattern, and fares/caps/velocity/hold-TTL/booking-window all env-driven
+(`.env.example`). `tests/integration/test_seed_config.py` asserts coach/seat/station
+counts **and the set of trains on a given weekday**
 come from config (change config → results change, no code edit).
 
 **Exit gate**, on a clean machine, `cp .env.example .env && docker compose up`

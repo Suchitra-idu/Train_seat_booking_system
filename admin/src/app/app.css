@@ -1,0 +1,44 @@
+@import "tailwindcss";
+@import "@skeletonlabs/skeleton";
+@import "@skeletonlabs/skeleton/themes/rosepine";
+
+/* Colour, spacing, and radius all come from the Rose Pine theme (data-theme on <html>).
+   Open Sans is the one thing the theme doesn't set. */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply antialiased;
+    font-family: "Open Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-primary-500);
+    outline-offset: 2px;
+  }
+
+  /* D27: this app renders in light mode only, a counter screen under fluorescent light is
+     the last place to introduce a second palette. */
+  :root {
+    color-scheme: light;
+  }
+}
+
+/* Redefine Tailwind's `dark` variant to a selector this app never emits (D27). */
+@custom-variant dark (&:where([data-force-dark-that-never-matches]));
+
+/* Print: the ticket card only, no header/tabs/buttons. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .receipt-card,
+  .receipt-card * {
+    visibility: visible;
+  }
+  .receipt-card {
+    break-inside: avoid;
+    margin: 0 0 1rem;
+    max-width: 100%;
+  }
+}

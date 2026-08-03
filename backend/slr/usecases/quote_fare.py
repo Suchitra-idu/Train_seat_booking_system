@@ -13,6 +13,7 @@ def quote_fare(
     deps: Deps, *, trip_id: str, leg: Leg, travel_class: TravelClass
 ) -> Money:
     with deps.uow as uow:
+        
         trip = uow.trips.get(trip_id)
         validate_leg(trip, leg)
         return price_leg(deps, uow, trip, leg, travel_class)

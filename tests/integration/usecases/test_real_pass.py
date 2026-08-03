@@ -73,3 +73,17 @@ def test_overlapping_hold_is_rejected_by_the_constraint(real_deps):
     _hold(real_deps, leg=Leg(0, 3), passenger="p1")
     with pytest.raises(OverlapError):
         _hold(real_deps, leg=Leg(1, 2), passenger="p2")
+
+
+@pytest.mark.integration
+def test_segment_resale_adjacent_legs_on_the_same_seat_both_confirm(real_deps):
+    """The signature journey (D2): A->B and B->C don't overlap, so the same physical
+    seat serves both passengers, proven against the real GiST constraint, not a fake."""
+    first = _hold(real_deps, leg=Leg(0, 2), passenger="p1")
+    second = _hold(real_deps, leg=Leg(2, 3), passenger="p2")
+
+    confirm_booking(real_deps, booking_id=first.booking_id)
+    confirm_booking(real_deps, booking_id=second.booking_id)
+
+    assert real_deps.uow.bookings.get(first.booking_id).status is BookingStatus.CONFIRMED
+    assert real_deps.uow.bookings.get(second.booking_id).status is BookingStatus.CONFIRMED

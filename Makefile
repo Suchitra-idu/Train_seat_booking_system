@@ -1,48 +1,50 @@
 # `make check` is the gate. Backend runs via uv, frontend via npm.
 
 .DEFAULT_GOAL := help
-UV  := uv run
-WEB := npm --prefix web
+UV    := uv run
+WEB   := npm --prefix web
+ADMIN := npm --prefix admin
 
 # slr is a source tree, not an installed package ([tool.uv] package=false); put it on
 # the path for import-linter and mypy (pytest gets it from pyproject pythonpath).
 export PYTHONPATH := $(CURDIR)/backend
 
-.PHONY: help install check lint arch typecheck test-unit test-int test-e2e \
+.PHONY: help install check lint arch typecheck test-unit test-int \
         guard emit-openapi serve dev demo-concurrency demo-resale fmt clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 	  awk 'BEGIN {FS=":.*?## "}{printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 
-install: ## Install backend (uv) + frontend (npm) toolchains
+install: ## Install backend (uv) + both frontends (npm) toolchains
 	uv sync
 	$(WEB) install
+	$(ADMIN) install
 
 check: lint arch typecheck test-unit test-int ## Full gate: lint + arch + types + unit + integration
 	@echo "✓ check green"
 
-lint: ## ruff (backend) + eslint (frontend)
+lint: ## ruff (backend) + eslint (both frontends)
 	$(UV) ruff check backend tests
 	$(WEB) run lint
+	$(ADMIN) run lint
 
-arch: ## Dependency Rule: import-linter (backend) + dependency-cruiser (frontend)
+arch: ## Dependency Rule: import-linter (backend) + dependency-cruiser (both frontends)
 	$(UV) lint-imports
 	$(WEB) run arch
+	$(ADMIN) run arch
 
 typecheck: ## mypy over the backend package
 	$(UV) mypy
 
 # Exit 5 = "no tests matched" (expected while a ring is empty); a real failure still fails.
-test-unit: ## Tier 1 — pure unit tests (backend + frontend), milliseconds
+test-unit: ## Tier 1 — pure unit tests (backend + both frontends), milliseconds
 	@$(UV) pytest -m unit --no-header; e=$$?; [ $$e -eq 0 ] || [ $$e -eq 5 ]
 	$(WEB) run test
+	$(ADMIN) run test
 
 test-int: ## Tier 2 — integration: ports (real+fake), use-cases (fakes), contract, arch
 	@$(UV) pytest -m "integration or concurrency or contract or arch" --no-header; e=$$?; [ $$e -eq 0 ] || [ $$e -eq 5 ]
-
-test-e2e: ## Tier 3 — system/E2E against the live stack (needs docker compose up)
-	docker compose --profile e2e run --rm e2e
 
 guard: ## Plant a banned import in the pure core; import-linter MUST reject it
 	@echo "import sqlalchemy  # planted by 'make guard'" > backend/slr/domain/_guard.py
@@ -67,8 +69,8 @@ dev: ## Zero-infra playground: API on the in-memory fake, seeded with a demo tri
 demo-concurrency: ## Fire N holds at one seat/leg → "1 booked, N−1 got 409"
 	$(UV) python scripts/demo_concurrency.py
 
-demo-resale: ## A→B and B→C on the same seat both succeed (P7)
-	@echo "demo-resale lands with the E2E journey in P7"
+demo-resale: ## A→B and B→C on the same seat both succeed against a real Postgres (D2, P7)
+	$(UV) python scripts/demo_resale.py
 
 fmt: ## Auto-fix lint where possible
 	$(UV) ruff check --fix backend tests
