@@ -1,5 +1,11 @@
 # Segment-Based Train Seat Booking — Colombo Fort–Badulla
 
+
+
+https://github.com/user-attachments/assets/e68deeb4-0113-49b5-98f4-edfe0c095232
+
+
+
 One reserved seat, sold and resold for multiple non-overlapping legs of the
 same journey (Colombo→Kandy, then Kandy→Badulla on the *same seat*), each
 passenger charged only for distance travelled.
